@@ -16,6 +16,8 @@ type Tetris struct {
 	rngIndex   int
 	current    *Piece
 	next       *Piece
+	held       *Piece
+	holdUsed   bool
 	score      int
 	level      int
 	lines      int
@@ -86,6 +88,7 @@ func (t *Tetris) spawnPiece() {
 	}
 	t.onGround = false
 	t.lockTimer = time.Now()
+	t.holdUsed = false
 }
 
 func (t *Tetris) Name() string        { return "Tetris" }
@@ -168,6 +171,40 @@ func (t *Tetris) lock() {
 	t.spawnPiece()
 }
 
+func (t *Tetris) doHold() {
+	if t.holdUsed {
+		return
+	}
+	if t.held == nil {
+		// First hold: save current type, pull next piece into play
+		t.held = &Piece{Type: t.current.Type, Color: t.current.Color}
+		t.spawnPiece() // resets holdUsed to false internally
+	} else {
+		// Swap: held piece becomes new current; current goes to hold
+		swapped := &Piece{Type: t.held.Type, Color: t.held.Color, X: 4, Y: 0, Rotation: 0}
+		t.held = &Piece{Type: t.current.Type, Color: t.current.Color}
+		t.current = swapped
+		if t.board.Collides(t.current) {
+			t.gameOver = true
+			return
+		}
+		t.onGround = false
+		t.lockTimer = time.Now()
+	}
+	t.holdUsed = true
+}
+
+// doQueue swaps the held piece with the next piece in queue.
+// The currently-falling piece is unaffected; nothing is lost.
+func (t *Tetris) doQueue() {
+	if t.held == nil || t.next == nil {
+		return
+	}
+	t.held, t.next =
+		&Piece{Type: t.next.Type, Color: t.next.Color},
+		&Piece{Type: t.held.Type, Color: t.held.Color, X: 4, Y: 0}
+}
+
 func (t *Tetris) HandleInput(key string) {
 	if t.gameOver {
 		return
@@ -188,6 +225,10 @@ func (t *Tetris) HandleInput(key string) {
 			t.score += 2
 		}
 		t.lock()
+	case "c":
+		t.doHold()
+	case "z":
+		t.doQueue()
 	case "p":
 		t.paused = !t.paused
 	case "q":
@@ -210,10 +251,53 @@ func (t *Tetris) ghostY() int {
 	return gy
 }
 
-func (t *Tetris) Render() string {
-	var sb strings.Builder
+// renderMiniPiece renders a piece as a 4×4 mini-grid, always at rotation 0.
+// Returns 4 strings each representing one row (8 visible chars = 4 cells × 2).
+func renderMiniPiece(p *Piece) [4]string {
+	grayCell := lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··")
+	emptyRow := grayCell + grayCell + grayCell + grayCell
 
-	// Pre-compute ghost and current piece cell sets
+	if p == nil {
+		return [4]string{emptyRow, emptyRow, emptyRow, emptyRow}
+	}
+
+	cells := getCells(&Piece{Type: p.Type, Color: p.Color, Rotation: 0})
+
+	// Normalize: shift cells so minimum Y is 0
+	minY := 0
+	for _, c := range cells {
+		if c.Y < minY {
+			minY = c.Y
+		}
+	}
+	offset := -minY
+
+	var grid [4][4]bool
+	for _, c := range cells {
+		y := c.Y + offset
+		if y >= 0 && y < 4 && c.X >= 0 && c.X < 4 {
+			grid[y][c.X] = true
+		}
+	}
+
+	color := ui.GetPieceColor(p.Color)
+	var rows [4]string
+	for y := 0; y < 4; y++ {
+		var row strings.Builder
+		for x := 0; x < 4; x++ {
+			if grid[y][x] {
+				row.WriteString(lipgloss.NewStyle().Foreground(color).Render("██"))
+			} else {
+				row.WriteString(grayCell)
+			}
+		}
+		rows[y] = row.String()
+	}
+	return rows
+}
+
+// renderBoardLines returns the 22-line left panel (border + 20 board rows + border).
+func (t *Tetris) renderBoardLines() []string {
 	ghostCells := map[[2]int]bool{}
 	currentCells := map[[2]int]bool{}
 	if t.current != nil {
@@ -228,41 +312,133 @@ func (t *Tetris) Render() string {
 		}
 	}
 
-	sb.WriteString("\n")
-	sb.WriteString("  ╔════════════════════════════════════╗\n")
-	sb.WriteString("  ║                                    ║\n")
+	lines := make([]string, 0, 22)
+	lines = append(lines, "╔════════════════════════╗")
 
 	for y := 0; y < BoardHeight; y++ {
-		sb.WriteString("  ║  ")
+		var row strings.Builder
+		row.WriteString("║  ")
 		for x := 0; x < BoardWidth; x++ {
 			pos := [2]int{x, y}
 			c := t.board.Cell(x, y)
 			switch {
 			case c != 0:
-				sb.WriteString(lipgloss.NewStyle().Foreground(ui.GetPieceColor(c)).Render("██"))
+				row.WriteString(lipgloss.NewStyle().Foreground(ui.GetPieceColor(c)).Render("██"))
 			case currentCells[pos]:
-				sb.WriteString(lipgloss.NewStyle().Foreground(ui.GetPieceColor(t.current.Color)).Render("██"))
+				row.WriteString(lipgloss.NewStyle().Foreground(ui.GetPieceColor(t.current.Color)).Render("██"))
 			case ghostCells[pos]:
-				sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("░░"))
+				row.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("░░"))
 			default:
-				sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··"))
+				row.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··"))
 			}
 		}
-		sb.WriteString("  ║\n")
+		row.WriteString("  ║")
+		lines = append(lines, row.String())
 	}
 
-	nextLabel := "  "
-	if t.next != nil {
-		nextColor := ui.GetPieceColor(t.next.Color)
-		nextLabel = lipgloss.NewStyle().Foreground(nextColor).Render(fmt.Sprintf("%-2s", string(t.next.Type)))
+	lines = append(lines, "╚════════════════════════╝")
+	return lines
+}
+
+// renderSidebarLines returns the 22-line right panel with NEXT, HOLD, stats, and hints.
+func (t *Tetris) renderSidebarLines() []string {
+	border := lipgloss.NewStyle().Foreground(ui.ColorBorder)
+	text := lipgloss.NewStyle().Foreground(ui.ColorText)
+
+	sideW := 14 // inner visible width
+
+	pad := func(s string, w int) string {
+		// Pad a plain string to visible width w (no ANSI in s assumed here)
+		for len(s) < w {
+			s += " "
+		}
+		return s
 	}
 
-	sb.WriteString("  ║                                    ║\n")
-	sb.WriteString("  ╠════════════════════════════════════╣\n")
-	sb.WriteString(fmt.Sprintf("  ║  SCORE: %-6d  LEVEL: %-2d  LINES: %-2d ║\n", t.score, t.level, t.lines))
-	sb.WriteString(fmt.Sprintf("  ║  NEXT: %s   [←→] Move  [↑] Rotate  ║\n", nextLabel))
-	sb.WriteString("  ║  [↓] Soft  [Space] Hard  [P] [Q]   ║\n")
-	sb.WriteString("  ╚════════════════════════════════════╝\n")
+	fullRow := func(content string) string {
+		return border.Render("║") + content + border.Render("║")
+	}
+	sepRow := border.Render("╠══════════════╣")
 
+	nextGrid := renderMiniPiece(t.next)
+	holdGrid := renderMiniPiece(t.held)
+
+	// Each mini-grid row: 3 spaces + 8 visible grid chars + 3 spaces = 14 inner
+	miniRow := func(gridRow string) string {
+		return fullRow("   " + gridRow + "   ")
+	}
+
+	holdLabel := "    HOLD      "
+	if t.held == nil {
+		holdLabel = "    HOLD  ----"
+	}
+
+	lines := []string{
+		border.Render("╔══════════════╗"),
+		fullRow(text.Render("    NEXT      ")),
+		fullRow(pad("", sideW)),
+		miniRow(nextGrid[0]),
+		miniRow(nextGrid[1]),
+		miniRow(nextGrid[2]),
+		miniRow(nextGrid[3]),
+		fullRow(pad("", sideW)),
+		sepRow,
+		fullRow(text.Render(holdLabel)),
+		fullRow(pad("", sideW)),
+		miniRow(holdGrid[0]),
+		miniRow(holdGrid[1]),
+		miniRow(holdGrid[2]),
+		miniRow(holdGrid[3]),
+		fullRow(pad("", sideW)),
+		sepRow,
+		fullRow(text.Render(fmt.Sprintf(" SCORE:%-7d ", t.score))),
+		fullRow(text.Render(fmt.Sprintf(" LEVEL: %-6d", t.level))),
+		fullRow(text.Render(fmt.Sprintf(" LINES: %-6d", t.lines))),
+		fullRow(pad("", sideW)),
+		border.Render("╚══════════════╝"),
+	}
+	return lines
+}
+
+func renderControlsLines() []string {
+	border := lipgloss.NewStyle().Foreground(ui.ColorBorder)
+	hint := lipgloss.NewStyle().Foreground(ui.ColorBorder)
+
+	inner := 42
+	row := func(s string) string {
+		runes := []rune(s)
+		for len(runes) < inner {
+			runes = append(runes, ' ')
+		}
+		return border.Render("║") + hint.Render(string(runes)) + border.Render("║")
+	}
+
+	return []string{
+		border.Render("╔══════════════════════════════════════════╗"),
+		row(" [←→] Move  [↑] Rotate  [↓] Soft drop  [Spc] Hard drop"),
+		row(" [C] Hold  [Z] Queue swap  [P] Pause  [Q] Quit"),
+		border.Render("╚══════════════════════════════════════════╝"),
+	}
+}
+
+func (t *Tetris) Render() string {
+	board := t.renderBoardLines()
+	side := t.renderSidebarLines()
+	controls := renderControlsLines()
+
+	var sb strings.Builder
+	sb.WriteString("\n")
+	for i := range board {
+		sb.WriteString("  ")
+		sb.WriteString(board[i])
+		sb.WriteString("  ")
+		sb.WriteString(side[i])
+		sb.WriteString("\n")
+	}
+	for _, line := range controls {
+		sb.WriteString("  ")
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
 	return sb.String()
 }
