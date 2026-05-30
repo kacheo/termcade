@@ -16,22 +16,26 @@ type tickMsg struct {
 	time.Time
 }
 
-type menuItem struct {
-	label    string
-	action   string
-	submenu  string
-}
+type menuState int
+
+const (
+	menuMain menuState = iota
+	menuTetrisOptions
+	menuPlaying
+	menuPause
+	menuGameOver
+)
 
 type model struct {
-	currentMenu string
+	currentMenu menuState
 	selected    int
-	options     struct {
+	game        core.Game
+	gameOver    bool
+	lastTick    time.Time
+	tetrisOpts  struct {
 		ghost      bool
 		startLevel int
 	}
-	game     core.Game
-	gameOver bool
-	lastTick time.Time
 }
 
 func (m *model) Init() tea.Cmd {
@@ -44,7 +48,7 @@ func (m *model) Init() tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
-		if m.game != nil && m.currentMenu == "playing" && !m.game.IsPaused() {
+		if m.game != nil && m.currentMenu == menuPlaying && !m.game.IsPaused() {
 			now := time.Now()
 			delta := now.Sub(m.lastTick)
 			m.lastTick = now
@@ -58,15 +62,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 	case tea.KeyMsg:
 		switch m.currentMenu {
-		case "main":
+		case menuMain:
 			return m.updateMainMenu(msg)
-		case "options":
-			return m.updateOptionsMenu(msg)
-		case "playing":
+		case menuTetrisOptions:
+			return m.updateTetrisOptions(msg)
+		case menuPlaying:
 			return m.updateGame(msg)
-		case "pause":
+		case menuPause:
 			return m.updatePauseMenu(msg)
-		case "gameover":
+		case menuGameOver:
 			return m.updateGameOverMenu(msg)
 		}
 	}
@@ -74,7 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Options", "Quit"}
+	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
@@ -87,35 +91,31 @@ func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		switch m.selected {
 		case 0:
-			m.currentMenu = "playing"
-			m.game = tetris.NewTetris()
-			m.gameOver = false
-		case 4:
-			m.currentMenu = "options"
+			m.currentMenu = menuTetrisOptions
 			m.selected = 0
-		case 5:
+		case 4:
 			return m, tea.Quit
 		}
 	}
 	return m, nil
 }
 
-func (m *model) updateOptionsMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) updateTetrisOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "left", "h":
 		if m.selected == 0 {
-			m.options.ghost = !m.options.ghost
+			m.tetrisOpts.ghost = false
 		} else if m.selected == 1 {
-			if m.options.startLevel > 0 {
-				m.options.startLevel--
+			if m.tetrisOpts.startLevel > 0 {
+				m.tetrisOpts.startLevel--
 			}
 		}
 	case "right", "l":
 		if m.selected == 0 {
-			m.options.ghost = !m.options.ghost
+			m.tetrisOpts.ghost = true
 		} else if m.selected == 1 {
-			if m.options.startLevel < 9 {
-				m.options.startLevel++
+			if m.tetrisOpts.startLevel < 9 {
+				m.tetrisOpts.startLevel++
 			}
 		}
 	case "up", "k":
@@ -123,11 +123,21 @@ func (m *model) updateOptionsMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selected--
 		}
 	case "down", "j":
-		if m.selected < 2 {
+		if m.selected < 3 {
 			m.selected++
 		}
-	case "enter", " ", "q":
-		m.currentMenu = "main"
+	case "enter", " ":
+		if m.selected == 2 {
+			m.game = tetris.NewTetris(m.tetrisOpts.ghost, m.tetrisOpts.startLevel)
+			m.currentMenu = menuPlaying
+			m.gameOver = false
+			m.selected = 0
+		} else if m.selected == 3 {
+			m.currentMenu = menuMain
+			m.selected = 0
+		}
+	case "q":
+		m.currentMenu = menuMain
 		m.selected = 0
 	}
 	return m, nil
@@ -136,10 +146,10 @@ func (m *model) updateOptionsMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
-		m.currentMenu = "main"
+		m.currentMenu = menuMain
 		m.game = nil
 	case "p":
-		m.currentMenu = "pause"
+		m.currentMenu = menuPause
 		m.selected = 0
 	default:
 		if m.game != nil {
@@ -147,7 +157,7 @@ func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.game.HandleInput(key)
 			if t, ok := m.game.(*tetris.Tetris); ok {
 				if t.IsGameOver() {
-					m.currentMenu = "gameover"
+					m.currentMenu = menuGameOver
 					m.gameOver = true
 					m.selected = 0
 				}
@@ -158,7 +168,7 @@ func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updatePauseMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Resume", "Restart", "Options", "Main Menu"}
+	items := []string{"Resume", "Restart", "Main Menu"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
@@ -171,21 +181,18 @@ func (m *model) updatePauseMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		switch m.selected {
 		case 0:
-			m.currentMenu = "playing"
+			m.currentMenu = menuPlaying
 		case 1:
-			m.game = tetris.NewTetris()
-			m.currentMenu = "playing"
+			m.game = tetris.NewTetris(m.tetrisOpts.ghost, m.tetrisOpts.startLevel)
+			m.currentMenu = menuPlaying
 			m.gameOver = false
 		case 2:
-			m.currentMenu = "options"
-			m.selected = 0
-		case 3:
-			m.currentMenu = "main"
+			m.currentMenu = menuMain
 			m.game = nil
 			m.selected = 0
 		}
 	case "p", "q":
-		m.currentMenu = "playing"
+		m.currentMenu = menuPlaying
 	}
 	return m, nil
 }
@@ -204,12 +211,12 @@ func (m *model) updateGameOverMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		switch m.selected {
 		case 0:
-			m.game = tetris.NewTetris()
-			m.currentMenu = "playing"
+			m.game = tetris.NewTetris(m.tetrisOpts.ghost, m.tetrisOpts.startLevel)
+			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
 		case 1:
-			m.currentMenu = "main"
+			m.currentMenu = menuMain
 			m.game = nil
 			m.selected = 0
 		}
@@ -238,22 +245,22 @@ func convertKey(key string) string {
 
 func (m *model) View() string {
 	switch m.currentMenu {
-	case "main":
+	case menuMain:
 		return m.renderMainMenu()
-	case "options":
-		return m.renderOptionsMenu()
-	case "playing":
+	case menuTetrisOptions:
+		return m.renderTetrisOptions()
+	case menuPlaying:
 		return m.renderGame()
-	case "pause":
+	case menuPause:
 		return m.renderPauseMenu()
-	case "gameover":
+	case menuGameOver:
 		return m.renderGameOverMenu()
 	}
 	return ""
 }
 
 func (m *model) renderMainMenu() string {
-	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Options", "Quit"}
+	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
@@ -276,38 +283,48 @@ func (m *model) renderMainMenu() string {
 	return sb.String()
 }
 
-func (m *model) renderOptionsMenu() string {
+func (m *model) renderTetrisOptions() string {
 	ghostText := "OFF"
-	if m.options.ghost {
+	if m.tetrisOpts.ghost {
 		ghostText = "ON "
 	}
-	levelText := fmt.Sprintf("%d", m.options.startLevel)
+	levelText := fmt.Sprintf("%d", m.tetrisOpts.startLevel)
 
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
-	sb.WriteString("  ║              Options                 ║\n")
+	sb.WriteString("  ║        Tetris — Options              ║\n")
 	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 	sb.WriteString("  ║                                       ║\n")
 
 	ghostStr := fmt.Sprintf("  ║   Ghost Piece     [ %s ]  ◀ ▶      ║", ghostText)
-	optionsStr := fmt.Sprintf("  ║   Start Level     [  %s  ]  ◀ ▶     ║", levelText)
+	levelStr := fmt.Sprintf("  ║   Start Level     [  %s  ]  ◀ ▶     ║", levelText)
 
 	if m.selected == 0 {
 		ghostStr = "  ║  ▶ Ghost Piece     [ " + ghostText + " ]  ◀ ▶      ║"
 		ghostStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(ghostStr)
 	} else if m.selected == 1 {
-		optionsStr = "  ║  ▶ Start Level     [  " + levelText + "  ]  ◀ ▶     ║"
-		optionsStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(optionsStr)
+		levelStr = "  ║  ▶ Start Level     [  " + levelText + "  ]  ◀ ▶     ║"
+		levelStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(levelStr)
 	}
 	sb.WriteString(ghostStr + "\n")
-	sb.WriteString(optionsStr + "\n")
+	sb.WriteString(levelStr + "\n")
 
 	sb.WriteString("  ║                                       ║\n")
-	sb.WriteString("  ║           [Back]                      ║\n")
+	if m.selected == 2 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+	} else {
+		sb.WriteString("  ║    Start Game                        ║\n")
+	}
+	if m.selected == 3 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+	} else {
+		sb.WriteString("  ║    Back                             ║\n")
+	}
+
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
-	sb.WriteString("    ←→ Change   ↑↓ Select   Q/Enter Back\n")
+	sb.WriteString("    ←→ Change   ↑↓ Select   Enter Start\n")
 	return sb.String()
 }
 
@@ -319,7 +336,7 @@ func (m *model) renderGame() string {
 }
 
 func (m *model) renderPauseMenu() string {
-	items := []string{"Resume", "Restart", "Options", "Main Menu"}
+	items := []string{"Resume", "Restart", "Main Menu"}
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
@@ -368,9 +385,9 @@ func (m *model) renderGameOverMenu() string {
 
 func main() {
 	p := tea.NewProgram(&model{
-		currentMenu: "main",
+		currentMenu: menuMain,
 		selected:    0,
-		options: struct {
+		tetrisOpts: struct {
 			ghost      bool
 			startLevel int
 		}{ghost: false, startLevel: 0},

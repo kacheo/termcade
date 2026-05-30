@@ -24,20 +24,24 @@ type Tetris struct {
 	lastDrop   time.Time
 	lockTimer  time.Time
 	onGround   bool
+	ghost      bool
+	startLevel int
 }
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func NewTetris() *Tetris {
+func NewTetris(ghost bool, startLevel int) *Tetris {
 	t := &Tetris{
 		board:      NewBoard(),
 		rng:        make([]byte, 7),
 		rngIndex:   0,
-		level:      0,
+		level:      startLevel,
 		lastDrop:   time.Now(),
 		lockTimer:  time.Now(),
+		ghost:      ghost,
+		startLevel: startLevel,
 	}
 	t.shuffleRNG()
 	t.spawnPiece()
