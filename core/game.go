@@ -9,6 +9,10 @@ type Game interface {
 	Name() string
 	Description() string
 	IsPaused() bool
+	IsGameOver() bool
+	GetScore() int
+	GetLevel() int
+	GetLines() int
 }
 
 type Position struct {

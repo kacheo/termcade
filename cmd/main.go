@@ -155,12 +155,10 @@ func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.game != nil {
 			key := convertKey(msg.String())
 			m.game.HandleInput(key)
-			if t, ok := m.game.(*tetris.Tetris); ok {
-				if t.IsGameOver() {
-					m.currentMenu = menuGameOver
-					m.gameOver = true
-					m.selected = 0
-				}
+			if m.game.IsGameOver() {
+				m.currentMenu = menuGameOver
+				m.gameOver = true
+				m.selected = 0
 			}
 		}
 	}
@@ -364,10 +362,10 @@ func (m *model) renderGameOverMenu() string {
 	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 	sb.WriteString("  ║                                       ║\n")
 
-	if t, ok := m.game.(*tetris.Tetris); ok {
-		sb.WriteString(fmt.Sprintf("  ║   Final Score: %-5d                 ║\n", t.GetScore()))
-		sb.WriteString(fmt.Sprintf("  ║   Level Reached: %-3d                ║\n", t.GetLevel()))
-		sb.WriteString(fmt.Sprintf("  ║   Lines Cleared: %-3d                ║\n", t.GetLines()))
+	if m.game != nil {
+		sb.WriteString(fmt.Sprintf("  ║   Final Score: %-5d                 ║\n", m.game.GetScore()))
+		sb.WriteString(fmt.Sprintf("  ║   Level Reached: %-3d                ║\n", m.game.GetLevel()))
+		sb.WriteString(fmt.Sprintf("  ║   Lines Cleared: %-3d                ║\n", m.game.GetLines()))
 	}
 
 	sb.WriteString("  ║                                       ║\n")
