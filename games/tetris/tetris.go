@@ -66,23 +66,20 @@ func (t *Tetris) nextPieceType() byte {
 }
 
 func (t *Tetris) spawnPiece() {
-	pieceType := t.nextPieceType()
-	t.current = &Piece{
-		Type:     pieceType,
-		X:        4,
-		Y:        0,
-		Rotation: 0,
-		Color:    pieceType,
-	}
-	nextPieceType := t.nextPieceType()
 	if t.next == nil {
-		t.next = &Piece{}
+		// First spawn: draw current from bag
+		pieceType := t.nextPieceType()
+		t.current = &Piece{Type: pieceType, X: 4, Y: 0, Rotation: 0, Color: pieceType}
+	} else {
+		// Subsequent spawns: promote queued next to current
+		t.current = t.next
+		t.current.X = 4
+		t.current.Y = 0
+		t.current.Rotation = 0
 	}
-	t.next.Type = nextPieceType
-	t.next.X = 4
-	t.next.Y = 0
-	t.next.Rotation = 0
-	t.next.Color = nextPieceType
+	// Always draw a fresh next from bag
+	nextType := t.nextPieceType()
+	t.next = &Piece{Type: nextType, X: 4, Y: 0, Rotation: 0, Color: nextType}
 
 	if t.board.Collides(t.current) {
 		t.gameOver = true
@@ -168,7 +165,6 @@ func (t *Tetris) lock() {
 	if t.level > 20 {
 		t.level = 20
 	}
-	t.current = t.next
 	t.spawnPiece()
 }
 
@@ -199,8 +195,38 @@ func (t *Tetris) HandleInput(key string) {
 	}
 }
 
+func (t *Tetris) ghostY() int {
+	if t.current == nil {
+		return 0
+	}
+	gy := t.current.Y
+	for {
+		test := &Piece{X: t.current.X, Y: gy + 1, Type: t.current.Type, Rotation: t.current.Rotation, Color: t.current.Color}
+		if t.board.Collides(test) {
+			break
+		}
+		gy++
+	}
+	return gy
+}
+
 func (t *Tetris) Render() string {
 	var sb strings.Builder
+
+	// Pre-compute ghost and current piece cell sets
+	ghostCells := map[[2]int]bool{}
+	currentCells := map[[2]int]bool{}
+	if t.current != nil {
+		for _, cell := range getCells(t.current) {
+			currentCells[[2]int{t.current.X + cell.X, t.current.Y + cell.Y}] = true
+		}
+		if t.ghost {
+			gy := t.ghostY()
+			for _, cell := range getCells(t.current) {
+				ghostCells[[2]int{t.current.X + cell.X, gy + cell.Y}] = true
+			}
+		}
+	}
 
 	sb.WriteString("\n")
 	sb.WriteString("  ╔════════════════════════════════════╗\n")
@@ -209,35 +235,33 @@ func (t *Tetris) Render() string {
 	for y := 0; y < BoardHeight; y++ {
 		sb.WriteString("  ║  ")
 		for x := 0; x < BoardWidth; x++ {
+			pos := [2]int{x, y}
 			c := t.board.Cell(x, y)
-			if c != 0 {
-				color := ui.GetPieceColor(c)
-				sb.WriteString(lipgloss.NewStyle().Foreground(color).Render("██"))
-			} else if t.current != nil {
-				pieceCell := false
-				for _, cell := range getCells(t.current) {
-					if t.current.X+cell.X == x && t.current.Y+cell.Y == y {
-						pieceCell = true
-						break
-					}
-				}
-				if pieceCell {
-					color := ui.GetPieceColor(t.current.Color)
-					sb.WriteString(lipgloss.NewStyle().Foreground(color).Render("██"))
-				} else {
-					sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··"))
-				}
-			} else {
+			switch {
+			case c != 0:
+				sb.WriteString(lipgloss.NewStyle().Foreground(ui.GetPieceColor(c)).Render("██"))
+			case currentCells[pos]:
+				sb.WriteString(lipgloss.NewStyle().Foreground(ui.GetPieceColor(t.current.Color)).Render("██"))
+			case ghostCells[pos]:
+				sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("░░"))
+			default:
 				sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··"))
 			}
 		}
 		sb.WriteString("  ║\n")
 	}
 
+	nextLabel := "  "
+	if t.next != nil {
+		nextColor := ui.GetPieceColor(t.next.Color)
+		nextLabel = lipgloss.NewStyle().Foreground(nextColor).Render(fmt.Sprintf("%-2s", string(t.next.Type)))
+	}
+
 	sb.WriteString("  ║                                    ║\n")
 	sb.WriteString("  ╠════════════════════════════════════╣\n")
-	sb.WriteString(fmt.Sprintf("  ║  SCORE: %-5d  LEVEL: %-2d  LINES: %-2d  ║\n", t.score, t.level, t.lines))
-	sb.WriteString("  ║  [P] Pause                [Q] Quit ║\n")
+	sb.WriteString(fmt.Sprintf("  ║  SCORE: %-6d  LEVEL: %-2d  LINES: %-2d ║\n", t.score, t.level, t.lines))
+	sb.WriteString(fmt.Sprintf("  ║  NEXT: %s   [←→] Move  [↑] Rotate  ║\n", nextLabel))
+	sb.WriteString("  ║  [↓] Soft  [Space] Hard  [P] [Q]   ║\n")
 	sb.WriteString("  ╚════════════════════════════════════╝\n")
 
 	return sb.String()
