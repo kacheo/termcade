@@ -2,6 +2,25 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## Project
+
+**tmvgs** is a Go terminal games suite (Bubble Tea MVU + Lipgloss).
+
+Key files:
+- `cmd/main.go` — menu state machine: `menuMain → menuTetrisOptions → menuPlaying → menuPause → menuGameOver`
+- `core/game.go` — `Game` interface: implement `Update`, `Render`, `HandleInput`, `Name`, `Description`, `IsPaused`
+- `games/tetris/tetris.go` + `board.go` — Tetris logic, piece data, collision detection
+- `core/ui/renderer.go` — lipgloss colour palette
+
+To add a new game: implement `core.Game`, register it in `cmd/main.go`.
+
+## Build & Verify
+
+```bash
+go build ./...    # must pass before every commit
+go run ./cmd      # smoke-test the UI
+```
+
 ## Quick Reference
 
 ```bash
