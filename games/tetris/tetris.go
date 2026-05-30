@@ -202,19 +202,9 @@ func (t *Tetris) HandleInput(key string) {
 func (t *Tetris) Render() string {
 	var sb strings.Builder
 
-	sb.WriteString("\n  ╔═══════════════════╗  ╔═══════════╗\n")
-	sb.WriteString(fmt.Sprintf("  ║   NEXT: %c        ║  ║  SCORE   ║\n", t.next.Type))
-	sb.WriteString("  ║                   ║  ║           ║\n")
-	sb.WriteString(fmt.Sprintf("  ║   %c              ║  ║  %-6d  ║\n", t.next.Type, t.score))
-	sb.WriteString("  ║                   ║  ╠═══════════╣\n")
-	sb.WriteString("  ╚═══════════════════╝  ║  LEVEL   ║\n")
-	sb.WriteString(fmt.Sprintf("                         ║    %-2d   ║\n", t.level))
-	sb.WriteString("  ╔═══════════════════════╣  LINES   ║\n")
-	sb.WriteString(fmt.Sprintf("  ║                       ║    %-2d   ║\n", t.lines))
-	sb.WriteString("  ║                       ╚═══════════╝\n")
-
-	sb.WriteString("  ╠═══════════════════════╣\n")
-	sb.WriteString("  ║                       ║\n")
+	sb.WriteString("\n")
+	sb.WriteString("  ╔════════════════════════════════════╗\n")
+	sb.WriteString("  ║                                    ║\n")
 
 	for y := 0; y < BoardHeight; y++ {
 		sb.WriteString("  ║  ")
@@ -222,7 +212,7 @@ func (t *Tetris) Render() string {
 			c := t.board.Cell(x, y)
 			if c != 0 {
 				color := ui.GetPieceColor(c)
-				sb.WriteString(lipgloss.NewStyle().Foreground(color).Render("█"))
+				sb.WriteString(lipgloss.NewStyle().Foreground(color).Render("██"))
 			} else if t.current != nil {
 				pieceCell := false
 				for _, cell := range getCells(t.current) {
@@ -233,21 +223,22 @@ func (t *Tetris) Render() string {
 				}
 				if pieceCell {
 					color := ui.GetPieceColor(t.current.Color)
-					sb.WriteString(lipgloss.NewStyle().Foreground(color).Render("█"))
+					sb.WriteString(lipgloss.NewStyle().Foreground(color).Render("██"))
 				} else {
-					sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("·"))
+					sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··"))
 				}
 			} else {
-				sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("·"))
+				sb.WriteString(lipgloss.NewStyle().Foreground(ui.ColorGray).Render("··"))
 			}
 		}
 		sb.WriteString("  ║\n")
 	}
 
-	sb.WriteString("  ║                       ║\n")
-	sb.WriteString("  ╠═══════════════════════╣\n")
-	sb.WriteString("  ║  [P] Pause  [Q] Quit   ║\n")
-	sb.WriteString("  ╚═══════════════════════╝\n")
+	sb.WriteString("  ║                                    ║\n")
+	sb.WriteString("  ╠════════════════════════════════════╣\n")
+	sb.WriteString(fmt.Sprintf("  ║  SCORE: %-5d  LEVEL: %-2d  LINES: %-2d  ║\n", t.score, t.level, t.lines))
+	sb.WriteString("  ║  [P] Pause                [Q] Quit ║\n")
+	sb.WriteString("  ╚════════════════════════════════════╝\n")
 
 	return sb.String()
 }
