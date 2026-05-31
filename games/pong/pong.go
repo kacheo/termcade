@@ -1,7 +1,9 @@
 package pong
 
 import (
+	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -160,3 +162,82 @@ func (p *Pong) IsGameOver() bool     { return p.gameOver }
 func (p *Pong) GetScore() int        { return p.playerScore }
 func (p *Pong) GetLevel() int       { return p.aiDifficulty }
 func (p *Pong) GetLines() int        { return p.aiScore }
+
+func (p *Pong) HandleInput(key string) {
+	if p.gameOver {
+		return
+	}
+	switch key {
+	case "up", "k":
+		p.playerY -= 0.05
+	case "down", "j":
+		p.playerY += 0.05
+	case "p":
+		p.paused = !p.paused
+	case "q":
+		p.gameOver = true
+		p.winner = "AI"
+	}
+
+	halfPaddle := float64(PaddleHeight) / float64(FieldHeight) / 2
+	if p.playerY < halfPaddle {
+		p.playerY = halfPaddle
+	}
+	if p.playerY > 1-halfPaddle {
+		p.playerY = 1 - halfPaddle
+	}
+}
+
+func (p *Pong) Render() string {
+	var sb strings.Builder
+	sb.WriteString("\n")
+
+	sb.WriteString("  ╔════════════════════════════════════════╗\n")
+	sb.WriteString("║           PONG                          ║\n")
+	sb.WriteString("  ╠════════════════════════════════════════╣\n")
+
+	for y := 0; y < FieldHeight; y++ {
+		rowY := float64(y) / float64(FieldHeight)
+		sb.WriteString("  ║")
+
+		for x := 0; x < FieldWidth; x++ {
+			char := " "
+
+			if x == 2 {
+				paddleTop := p.playerY - float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleBottom := p.playerY + float64(PaddleHeight)/float64(FieldHeight)/2
+				if rowY >= paddleTop && rowY <= paddleBottom {
+					char = "█"
+				}
+			}
+
+			if x == FieldWidth-3 {
+				paddleTop := p.aiY - float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleBottom := p.aiY + float64(PaddleHeight)/float64(FieldHeight)/2
+				if rowY >= paddleTop && rowY <= paddleBottom {
+					char = "█"
+				}
+			}
+
+			ballX := int(p.ballX * float64(FieldWidth))
+			if ballX == x && int(p.ballY*float64(FieldHeight)) == y {
+				char = "●"
+			}
+
+			if x == FieldWidth/2 {
+				char = "│"
+			}
+
+			sb.WriteString(char)
+		}
+		sb.WriteString("║\n")
+	}
+
+	sb.WriteString("  ╠════════════════════════════════════════╣\n")
+	sb.WriteString(fmt.Sprintf("║  Player: %d          AI: %d              ║\n", p.playerScore, p.aiScore))
+	sb.WriteString("  ╚════════════════════════════════════════╝\n")
+
+	sb.WriteString("    [↑/↓] Move   [P] Pause   [Q] Quit\n")
+
+	return sb.String()
+}
