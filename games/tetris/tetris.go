@@ -391,7 +391,7 @@ func (t *Tetris) renderSidebarLines() []string {
 		miniRow(holdGrid[3]),
 		fullRow(pad("", sideW)),
 		sepRow,
-		fullRow(text.Render(fmt.Sprintf(" SCORE:%-7d ", t.score))),
+		fullRow(text.Render(fmt.Sprintf(" SCORE: %-6d", t.score))),
 		fullRow(text.Render(fmt.Sprintf(" LEVEL: %-6d", t.level))),
 		fullRow(text.Render(fmt.Sprintf(" LINES: %-6d", t.lines))),
 		fullRow(pad("", sideW)),
@@ -415,8 +415,9 @@ func renderControlsLines() []string {
 
 	return []string{
 		border.Render("╔══════════════════════════════════════════╗"),
-		row(" [←→] Move  [↑] Rotate  [↓] Soft drop  [Spc] Hard drop"),
-		row(" [C] Hold  [Z] Queue swap  [P] Pause  [Q] Quit"),
+		row(" [←→] Move  [↑] Rotate  [↓] Soft drop"),
+		row(" [Spc] Hard drop  [C] Hold  [Z] Swap"),
+		row(" [P] Pause  [Q] Quit"),
 		border.Render("╚══════════════════════════════════════════╝"),
 	}
 }
