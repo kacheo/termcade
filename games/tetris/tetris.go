@@ -11,23 +11,27 @@ import (
 )
 
 type Tetris struct {
-	board      *Board
-	rng        []byte
-	rngIndex   int
-	current    *Piece
-	next       *Piece
-	held       *Piece
-	holdUsed   bool
-	score      int
-	level      int
-	lines      int
-	gameOver   bool
-	paused     bool
-	lastDrop   time.Time
-	lockTimer  time.Time
-	onGround   bool
-	ghost      bool
-	startLevel int
+	board       *Board
+	rng         []byte
+	rngIndex    int
+	current     *Piece
+	next        *Piece
+	held        *Piece
+	holdUsed    bool
+	score       int
+	level       int
+	lines       int
+	gameOver    bool
+	paused      bool
+	lastDrop    time.Time
+	lockTimer   time.Time
+	lockStart   time.Time
+	onGround    bool
+	ghost       bool
+	startLevel  int
+	lastRotate  bool
+	combo       int
+	backToBack  int
 }
 
 func init() {
@@ -135,6 +139,9 @@ func (t *Tetris) move(dx, dy int) bool {
 		if dy > 0 {
 			t.onGround = false
 		}
+		if dx != 0 {
+			t.lastRotate = false
+		}
 		return true
 	}
 	return false
@@ -144,31 +151,80 @@ func (t *Tetris) rotate() bool {
 	if t.current == nil {
 		return false
 	}
-	oldRot := t.current.Rotation
-	t.current.Rotation = (t.current.Rotation + 1) % 4
-	if t.board.Collides(t.current) {
-		t.current.Rotation = oldRot
-		return false
+	newRot := (t.current.Rotation + 1) % 4
+
+	// Try rotation at current position first
+	if !t.board.CollidesAt(t.current, t.current.X, t.current.Y, newRot) {
+		t.current.Rotation = newRot
+		t.lastRotate = true
+		t.onGround = false
+		return true
 	}
-	t.onGround = false
-	return true
+
+	// Wall kicks: try -1, 1, -2, 2
+	for _, dx := range []int{-1, 1, -2, 2} {
+		if !t.board.CollidesAt(t.current, t.current.X+dx, t.current.Y, newRot) {
+			t.current.X += dx
+			t.current.Rotation = newRot
+			t.lastRotate = true
+			t.onGround = false
+			return true
+		}
+	}
+
+	return false
 }
 
-func (t *Tetris) lock() {
+func (t *Tetris) lock() LockResult {
 	if t.current == nil {
-		return
+		return LockResult{}
 	}
+
+	result := LockResult{}
+	result.TSpin = t.isTSpin()
 	t.board.Lock(t.current)
-	cleared := t.board.ClearLines()
-	t.lines += cleared
-	if cleared > 0 {
-		t.score += []int{0, 100, 300, 500, 800}[cleared] * (t.level + 1)
+	cleared, rows := t.board.ClearLines()
+	result.Cleared = cleared
+	result.ClearedRows = rows
+
+	// Score calculation
+	if result.TSpin {
+		scoreTable := []int{400, 800, 1200, 1600}
+		if result.Cleared >= 0 && result.Cleared < len(scoreTable) {
+			result.ScoreDelta = scoreTable[result.Cleared] * (t.level + 1)
+		}
+	} else if result.Cleared > 0 {
+		scoreTable := []int{0, 100, 300, 500, 800}
+		result.ScoreDelta = scoreTable[result.Cleared] * (t.level + 1)
 	}
-	t.level = t.lines / 10
-	if t.level > 20 {
-		t.level = 20
+
+	if result.ScoreDelta > 0 {
+		t.score += result.ScoreDelta
 	}
+
+	if result.Cleared > 0 {
+		t.lines += result.Cleared
+		t.level = t.lines / 10
+		if t.level > 20 {
+			t.level = 20
+		}
+		t.combo++
+		result.Combo = t.combo
+		qualifiesB2B := (result.TSpin && result.Cleared > 0) || result.Cleared == 4
+		if qualifiesB2B {
+			t.backToBack++
+		} else {
+			t.backToBack = 0
+		}
+		result.BackToBack = t.backToBack
+	} else {
+		t.combo = 0
+		t.backToBack = 0
+	}
+
 	t.spawnPiece()
+	t.lastRotate = false
+	return result
 }
 
 func (t *Tetris) doHold() {
@@ -249,6 +305,33 @@ func (t *Tetris) ghostY() int {
 		gy++
 	}
 	return gy
+}
+
+func (t *Tetris) isTSpin() bool {
+	if t.current == nil || t.current.Type != 'T' {
+		return false
+	}
+	if !t.lastRotate {
+		return false
+	}
+	cx := t.current.X + 1
+	cy := t.current.Y + 1
+	corners := [][2]int{
+		{cx - 1, cy - 1},
+		{cx + 1, cy - 1},
+		{cx - 1, cy + 1},
+		{cx + 1, cy + 1},
+	}
+	filled := 0
+	for _, c := range corners {
+		x, y := c[0], c[1]
+		if x < 0 || x >= BoardWidth || y < 0 || y >= BoardHeight {
+			filled++
+		} else if t.board.grid[y][x] != 0 {
+			filled++
+		}
+	}
+	return filled >= 3
 }
 
 // renderMiniPiece renders a piece as a 4×4 mini-grid, always at rotation 0.

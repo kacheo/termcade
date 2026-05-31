@@ -7,7 +7,7 @@ import (
 const (
 	BoardWidth  = 10
 	BoardHeight = 20
-	LockDelay   = 500 * time.Millisecond
+	LockDelay   = 250 * time.Millisecond
 )
 
 type Piece struct {
@@ -117,6 +117,15 @@ type Board struct {
 	grid [BoardHeight][BoardWidth]byte
 }
 
+type LockResult struct {
+	TSpin       bool
+	Cleared     int
+	ClearedRows []int
+	Combo       int
+	BackToBack  int
+	ScoreDelta  int
+}
+
 func NewBoard() *Board {
 	return &Board{}
 }
@@ -135,17 +144,41 @@ func (b *Board) SetCell(x, y int, v byte) {
 }
 
 func (b *Board) Collides(p *Piece) bool {
-	for _, c := range getCells(p) {
-		x := p.X + c.X
-		y := p.Y + c.Y
-		if x < 0 || x >= BoardWidth || y >= BoardHeight {
+	return b.CollidesAt(p, p.X, p.Y, p.Rotation)
+}
+
+func (b *Board) CollidesAt(p *Piece, x, y, rotation int) bool {
+	for _, c := range getCellsAt(p.Type, rotation) {
+		cx := x + c.X
+		cy := y + c.Y
+		if cx < 0 || cx >= BoardWidth || cy >= BoardHeight {
 			return true
 		}
-		if y >= 0 && b.grid[y][x] != 0 {
+		if cy >= 0 && b.grid[cy][cx] != 0 {
 			return true
 		}
 	}
 	return false
+}
+
+func getCellsAt(pieceType byte, rotation int) []Position {
+	switch pieceType {
+	case 'I':
+		return I.Rotations[rotation]
+	case 'O':
+		return O.Rotations[rotation]
+	case 'T':
+		return T.Rotations[rotation]
+	case 'S':
+		return S.Rotations[rotation]
+	case 'Z':
+		return Z.Rotations[rotation]
+	case 'J':
+		return J.Rotations[rotation]
+	case 'L':
+		return L.Rotations[rotation]
+	}
+	return nil
 }
 
 func (b *Board) Lock(p *Piece) {
@@ -158,8 +191,9 @@ func (b *Board) Lock(p *Piece) {
 	}
 }
 
-func (b *Board) ClearLines() int {
+func (b *Board) ClearLines() (int, []int) {
 	cleared := 0
+	rows := []int{}
 	for y := BoardHeight - 1; y >= 0; y-- {
 		full := true
 		for x := 0; x < BoardWidth; x++ {
@@ -169,17 +203,60 @@ func (b *Board) ClearLines() int {
 			}
 		}
 		if full {
-			for vy := y; vy > 0; vy-- {
-				for x := 0; x < BoardWidth; x++ {
-					b.grid[vy][x] = b.grid[vy-1][x]
-				}
-			}
-			for x := 0; x < BoardWidth; x++ {
-				b.grid[0][x] = 0
-			}
 			cleared++
-			y++
+			rows = append(rows, y)
 		}
 	}
-	return cleared
+	if cleared == 0 {
+		return 0, nil
+	}
+	b.removeRows(rows)
+	return cleared, rows
+}
+
+func (b *Board) FullRows() []int {
+	rows := []int{}
+	for y := BoardHeight - 1; y >= 0; y-- {
+		full := true
+		for x := 0; x < BoardWidth; x++ {
+			if b.grid[y][x] == 0 {
+				full = false
+				break
+			}
+		}
+		if full {
+			rows = append(rows, y)
+		}
+	}
+	return rows
+}
+
+func (b *Board) removeRows(rows []int) {
+	if len(rows) == 0 {
+		return
+	}
+	rowsMap := make(map[int]struct{}, len(rows))
+	for _, row := range rows {
+		if row >= 0 && row < BoardHeight {
+			rowsMap[row] = struct{}{}
+		}
+	}
+	if len(rowsMap) == 0 {
+		return
+	}
+	dst := BoardHeight - 1
+	for src := BoardHeight - 1; src >= 0; src-- {
+		if _, remove := rowsMap[src]; remove {
+			continue
+		}
+		if dst != src {
+			copy(b.grid[dst][:], b.grid[src][:])
+		}
+		dst--
+	}
+	for ; dst >= 0; dst-- {
+		for x := 0; x < BoardWidth; x++ {
+			b.grid[dst][x] = 0
+		}
+	}
 }

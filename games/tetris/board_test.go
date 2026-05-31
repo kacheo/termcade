@@ -230,7 +230,7 @@ func fillRow(b *Board, y int) {
 func TestBoardClearLines_None(t *testing.T) {
 	b := NewBoard()
 	b.SetCell(0, 19, 'I') // partial row
-	if n := b.ClearLines(); n != 0 {
+	if n, _ := b.ClearLines(); n != 0 {
 		t.Errorf("ClearLines with no full row: got %d, want 0", n)
 	}
 	if b.Cell(0, 19) != 'I' {
@@ -242,7 +242,7 @@ func TestBoardClearLines_Single(t *testing.T) {
 	b := NewBoard()
 	b.SetCell(0, 18, 'T') // marker above the full row
 	fillRow(b, 19)
-	if n := b.ClearLines(); n != 1 {
+	if n, _ := b.ClearLines(); n != 1 {
 		t.Errorf("ClearLines single: got %d, want 1", n)
 	}
 	// Row 18 should have shifted down to row 19
@@ -259,7 +259,7 @@ func TestBoardClearLines_Double(t *testing.T) {
 	b := NewBoard()
 	fillRow(b, 18)
 	fillRow(b, 19)
-	if n := b.ClearLines(); n != 2 {
+	if n, _ := b.ClearLines(); n != 2 {
 		t.Errorf("ClearLines double: got %d, want 2", n)
 	}
 }
@@ -269,7 +269,7 @@ func TestBoardClearLines_Tetris(t *testing.T) {
 	for _, row := range []int{16, 17, 18, 19} {
 		fillRow(b, row)
 	}
-	if n := b.ClearLines(); n != 4 {
+	if n, _ := b.ClearLines(); n != 4 {
 		t.Errorf("ClearLines tetris: got %d, want 4", n)
 	}
 }
@@ -278,7 +278,7 @@ func TestBoardClearLines_NonContiguous(t *testing.T) {
 	b := NewBoard()
 	fillRow(b, 0)
 	fillRow(b, 19)
-	if n := b.ClearLines(); n != 2 {
+	if n, _ := b.ClearLines(); n != 2 {
 		t.Errorf("ClearLines non-contiguous: got %d, want 2", n)
 	}
 }
