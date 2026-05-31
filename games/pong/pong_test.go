@@ -227,3 +227,59 @@ func TestPongPlayerPaddleClamp(t *testing.T) {
 		t.Errorf("PlayerY should be clamped to 0.9, got %f", p.PlayerY)
 	}
 }
+
+func TestPongAIDifficultyClamping(t *testing.T) {
+	p := NewPong(false, -1)
+	if p.AiDifficulty != 0 {
+		t.Errorf("AiDifficulty should be clamped to 0, got %d", p.AiDifficulty)
+	}
+
+	p = NewPong(false, 10)
+	if p.AiDifficulty != 2 {
+		t.Errorf("AiDifficulty should be clamped to 2, got %d", p.AiDifficulty)
+	}
+}
+
+func TestPongSpeedCap(t *testing.T) {
+	p := NewPong(true, 1)
+	p.BallX = 0.05
+	p.BallY = p.PlayerY
+	p.BallVX = -InitialBallSpeed * 2
+
+	p.Update(time.Millisecond * 100)
+
+	maxSpeed := InitialBallSpeed * MaxSpeedMultiplier
+	absVX := p.BallVX
+	if absVX < 0 {
+		absVX = -absVX
+	}
+	if absVX > maxSpeed {
+		t.Errorf("BallVX should not exceed %f, got %f", maxSpeed, absVX)
+	}
+}
+
+func TestPongResetBallClearsHitCount(t *testing.T) {
+	p := NewPong(true, 1)
+	p.ballHitCount = 5
+
+	p.resetBall(1)
+
+	if p.ballHitCount != 0 {
+		t.Errorf("ballHitCount should be reset to 0, got %d", p.ballHitCount)
+	}
+}
+
+func TestPongConstants(t *testing.T) {
+	if InitialBallSpeed <= 0 {
+		t.Error("InitialBallSpeed should be positive")
+	}
+	if MaxSpeedMultiplier <= 1 {
+		t.Error("MaxSpeedMultiplier should be > 1")
+	}
+	if MaxPaddleHits <= 0 {
+		t.Error("MaxPaddleHits should be positive")
+	}
+	if SpeedIncreaseRate <= 1 {
+		t.Error("SpeedIncreaseRate should be > 1")
+	}
+}

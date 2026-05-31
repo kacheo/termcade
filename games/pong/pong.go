@@ -8,47 +8,75 @@ import (
 )
 
 const (
-	FieldWidth  = 40
-	FieldHeight = 20
-	PaddleHeight = 4
-	WinScore     = 5
+	FieldWidth         = 40
+	FieldHeight        = 20
+	PaddleHeight       = 4
+	WinScore           = 5
+	PaddleMargin       = 0.05
+	InitialBallSpeed   = 0.02
+	SpeedIncreaseRate  = 1.1
+	MaxSpeedMultiplier = 2.0
+	MaxPaddleHits      = 10
 )
 
 type Pong struct {
-	PlayerY      float64
-	AiY          float64
-	BallX        float64
-	BallY        float64
-	BallVX       float64
-	BallVY       float64
-	PlayerScore  int
-	AiScore      int
-	Paused       bool
-	GameOver     bool
-	Winner       string
+	PlayerY       float64
+	AiY           float64
+	BallX         float64
+	BallY         float64
+	BallVX        float64
+	BallVY        float64
+	PlayerScore   int
+	AiScore       int
+	Paused        bool
+	GameOver      bool
+	Winner        string
 	SpeedIncrease bool
 	AiDifficulty  int // 0=Easy, 1=Medium, 2=Hard
+	ballHitCount  int
 }
 
 func NewPong(speedIncrease bool, aiDifficulty int) *Pong {
-	p := &Pong{
-		PlayerY:        0.5,
-		AiY:            0.5,
-		BallX:          0.5,
-		BallY:          0.5,
-		SpeedIncrease:  speedIncrease,
-		AiDifficulty:   aiDifficulty,
+	if aiDifficulty < 0 {
+		aiDifficulty = 0
 	}
-	p.resetBall(1) // 1 = right direction
+	if aiDifficulty > 2 {
+		aiDifficulty = 2
+	}
+	p := &Pong{
+		PlayerY:       0.5,
+		AiY:          0.5,
+		BallX:        0.5,
+		BallY:        0.5,
+		SpeedIncrease: speedIncrease,
+		AiDifficulty:  aiDifficulty,
+		ballHitCount: 0,
+	}
+	p.resetBall(1)
 	return p
 }
 
 func (p *Pong) resetBall(direction int) {
 	p.BallX = 0.5
-	p.BallY = 0.5 + (rand.Float64() - 0.5) * 0.3
-	speed := 0.02
-	p.BallVX = float64(direction) * speed
-	p.BallVY = (rand.Float64() - 0.5) * speed
+	p.BallY = 0.5 + (rand.Float64()-0.5)*0.3
+	p.BallVX = float64(direction) * InitialBallSpeed
+	p.BallVY = (rand.Float64() - 0.5) * InitialBallSpeed
+	p.ballHitCount = 0
+}
+
+func (p *Pong) paddleHalf() float64 {
+	return float64(PaddleHeight) / float64(FieldHeight) / 2
+}
+
+func (p *Pong) clampPaddleY(y float64) float64 {
+	half := p.paddleHalf()
+	if y < half {
+		return half
+	}
+	if y > 1-half {
+		return 1 - half
+	}
+	return y
 }
 
 func (p *Pong) Update(delta time.Duration) error {
@@ -68,19 +96,27 @@ func (p *Pong) Update(delta time.Duration) error {
 		p.BallVY = -p.BallVY
 	}
 
-	if p.BallX <= 0.05 && p.BallVX < 0 {
-		if p.BallY >= p.PlayerY-0.05 && p.BallY <= p.PlayerY+0.05 {
+	if p.BallX <= PaddleMargin && p.BallVX < 0 {
+		if p.BallY >= p.PlayerY-PaddleMargin && p.BallY <= p.PlayerY+PaddleMargin {
 			p.BallVX = -p.BallVX
 			p.BallY += (p.BallY - p.PlayerY) * 0.5
-			if p.SpeedIncrease {
-				p.BallVX *= 1.1
-				p.BallVY *= 1.1
+			if p.SpeedIncrease && p.ballHitCount < MaxPaddleHits {
+				maxSpeed := InitialBallSpeed * MaxSpeedMultiplier
+				p.BallVX *= SpeedIncreaseRate
+				p.BallVY *= SpeedIncreaseRate
+				if p.BallVX > maxSpeed {
+					p.BallVX = maxSpeed
+				}
+				if p.BallVY > maxSpeed {
+					p.BallVY = maxSpeed
+				}
+				p.ballHitCount++
 			}
 		}
 	}
 
-	if p.BallX >= 0.95 && p.BallVX > 0 {
-		if p.BallY >= p.AiY-0.05 && p.BallY <= p.AiY+0.05 {
+	if p.BallX >= 1-PaddleMargin && p.BallVX > 0 {
+		if p.BallY >= p.AiY-PaddleMargin && p.BallY <= p.AiY+PaddleMargin {
 			p.BallVX = -p.BallVX
 			p.BallY += (p.BallY - p.AiY) * 0.5
 		}
@@ -146,13 +182,7 @@ func (p *Pong) updateAI() {
 		p.AiY += (rand.Float64() - 0.5) * 0.02
 	}
 
-	halfPaddle := float64(PaddleHeight) / float64(FieldHeight) / 2
-	if p.AiY < halfPaddle {
-		p.AiY = halfPaddle
-	}
-	if p.AiY > 1-halfPaddle {
-		p.AiY = 1 - halfPaddle
-	}
+	p.AiY = p.clampPaddleY(p.AiY)
 }
 
 func (p *Pong) Name() string        { return "Pong" }
@@ -179,13 +209,7 @@ func (p *Pong) HandleInput(key string) {
 		p.Winner = "AI"
 	}
 
-	halfPaddle := float64(PaddleHeight) / float64(FieldHeight) / 2
-	if p.PlayerY < halfPaddle {
-		p.PlayerY = halfPaddle
-	}
-	if p.PlayerY > 1-halfPaddle {
-		p.PlayerY = 1 - halfPaddle
-	}
+	p.PlayerY = p.clampPaddleY(p.PlayerY)
 }
 
 func (p *Pong) Render() string {
@@ -193,7 +217,7 @@ func (p *Pong) Render() string {
 	sb.WriteString("\n")
 
 	sb.WriteString("  ╔════════════════════════════════════════╗\n")
-	sb.WriteString("║           PONG                          ║\n")
+	sb.WriteString("  ║           PONG                          ║\n")
 	sb.WriteString("  ╠════════════════════════════════════════╣\n")
 
 	for y := 0; y < FieldHeight; y++ {
@@ -204,16 +228,16 @@ func (p *Pong) Render() string {
 			char := " "
 
 			if x == 2 {
-				paddleTop := p.PlayerY - float64(PaddleHeight)/float64(FieldHeight)/2
-				paddleBottom := p.PlayerY + float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleTop := p.PlayerY - p.paddleHalf()
+				paddleBottom := p.PlayerY + p.paddleHalf()
 				if rowY >= paddleTop && rowY <= paddleBottom {
 					char = "█"
 				}
 			}
 
 			if x == FieldWidth-3 {
-				paddleTop := p.AiY - float64(PaddleHeight)/float64(FieldHeight)/2
-				paddleBottom := p.AiY + float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleTop := p.AiY - p.paddleHalf()
+				paddleBottom := p.AiY + p.paddleHalf()
 				if rowY >= paddleTop && rowY <= paddleBottom {
 					char = "█"
 				}
