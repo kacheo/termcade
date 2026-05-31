@@ -214,5 +214,30 @@ func (b *Blackjack) evaluateResults() {
 	}
 }
 
-func (b *Blackjack) HandleInput(key string) {}
+func (b *Blackjack) HandleInput(key string) {
+	switch b.phase {
+	case phasePlayerTurn:
+		human := b.players[0]
+		if human.status != statusPlaying {
+			return
+		}
+		switch key {
+		case "h", "left":
+			human.hand = append(human.hand, b.deck.Draw())
+			if human.hand.IsBust() {
+				human.status = statusBust
+				b.phase = phaseDealerTurn
+				b.elapsed = 0
+			}
+		case "s", "right", "down":
+			human.status = statusStand
+			b.phase = phaseDealerTurn
+			b.elapsed = 0
+		}
+	case phaseResults:
+		if key == "enter" || key == " " {
+			b.startRound()
+		}
+	}
+}
 func (b *Blackjack) Render() string         { return "BLACKJACK\nloading..." }
