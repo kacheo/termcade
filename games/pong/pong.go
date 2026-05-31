@@ -14,9 +14,9 @@ const (
 	PaddleHeight        = 4
 	WinScore            = 5
 	PaddleMargin        = 0.05
-	InitialBallSpeed    = 0.025
-	PaddleSpeed         = 0.012
-	PaddleInputWindow   = 50 * time.Millisecond
+	InitialBallSpeed    = 0.016
+	PaddleSpeed         = 0.016
+	PaddleInputWindow   = 280 * time.Millisecond
 	SpeedIncreaseRate   = 1.1
 	MaxSpeedMultiplier  = 2.0
 	MaxPaddleHits       = 10
