@@ -60,3 +60,29 @@ func TestIsCompleteFalse(t *testing.T) {
 		t.Error("expected incomplete board")
 	}
 }
+
+func TestSolveUnsolvableNoCandidates(t *testing.T) {
+	board := NewBoard()
+	for c := 0; c < 9; c++ {
+		board.cells[0][c].value = c + 1
+	}
+	for c := 0; c < 9; c++ {
+		if c == 0 {
+			board.cells[1][c].value = 2
+		} else {
+			board.cells[1][c].value = (c + 1) % 9 + 1
+		}
+	}
+	board.cells[2][0].value = 3
+	board.cells[3][0].value = 4
+	board.cells[4][0].value = 0
+	board.cells[5][0].value = 5
+	board.cells[6][0].value = 6
+	board.cells[7][0].value = 7
+	board.cells[8][0].value = 8
+
+	_, err := Solve(&board)
+	if err == nil {
+		t.Error("expected error for unsolvable puzzle")
+	}
+}
