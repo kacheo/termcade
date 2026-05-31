@@ -441,8 +441,16 @@ func TestTetrisRender_ContainsStats(t *testing.T) {
 func TestTetrisRender_ContainsNext(t *testing.T) {
 	g := NewTetris(false, 0)
 	out := g.Render()
-	if !strings.Contains(out, "NEXT:") {
-		t.Error("Render should contain 'NEXT:' label")
+	if !strings.Contains(out, "NEXT") {
+		t.Error("Render should contain 'NEXT' label")
+	}
+}
+
+func TestTetrisRender_ContainsHold(t *testing.T) {
+	g := NewTetris(false, 0)
+	out := g.Render()
+	if !strings.Contains(out, "HOLD") {
+		t.Error("Render should contain 'HOLD' label")
 	}
 }
 
@@ -474,5 +482,144 @@ func TestTetrisRender_NilCurrent(t *testing.T) {
 	out := g.Render()
 	if out == "" {
 		t.Error("Render should return non-empty string even with nil current")
+	}
+}
+
+// ---- Hold -------------------------------------------------------------------
+
+func TestTetrisHold_FirstHold(t *testing.T) {
+	g := NewTetris(false, 0)
+	originalCurrent := g.current.Type
+	expectedCurrent := g.next.Type
+	g.doHold()
+	if g.held == nil {
+		t.Fatal("held should not be nil after first hold")
+	}
+	if g.held.Type != originalCurrent {
+		t.Errorf("held type: got %c, want %c", g.held.Type, originalCurrent)
+	}
+	if g.current.Type != expectedCurrent {
+		t.Errorf("current after first hold: got %c, want old next %c", g.current.Type, expectedCurrent)
+	}
+}
+
+func TestTetrisHold_Swap(t *testing.T) {
+	g := NewTetris(false, 0)
+	// First hold to populate the hold slot (held == nil path)
+	originalCurrent := g.current.Type
+	g.doHold()
+	if g.IsGameOver() {
+		t.Skip("game over during hold swap test")
+	}
+	// held = originalCurrent; current is whatever was next; holdUsed = true.
+	// Hard-drop current piece so spawnPiece() fires and resets holdUsed.
+	g.HandleInput(" ")
+	if g.IsGameOver() {
+		t.Skip("game over after hard drop")
+	}
+	// Now holdUsed = false; held still = originalCurrent.
+	// Second hold: current ↔ held
+	currentBeforeSwap := g.current.Type
+	g.doHold()
+	if g.IsGameOver() {
+		t.Skip("game over during hold swap")
+	}
+	if g.current.Type != originalCurrent {
+		t.Errorf("after swap, current: got %c, want %c", g.current.Type, originalCurrent)
+	}
+	if g.held.Type != currentBeforeSwap {
+		t.Errorf("after swap, held: got %c, want %c", g.held.Type, currentBeforeSwap)
+	}
+	// Position and rotation should reset on the swapped-in piece
+	if g.current.X != 4 || g.current.Y != 0 || g.current.Rotation != 0 {
+		t.Errorf("swapped-in piece should spawn at X=4 Y=0 Rot=0, got X=%d Y=%d Rot=%d",
+			g.current.X, g.current.Y, g.current.Rotation)
+	}
+}
+
+func TestTetrisHold_PreventDoubleHold(t *testing.T) {
+	g := NewTetris(false, 0)
+	g.doHold() // first hold succeeds
+	if g.IsGameOver() {
+		t.Skip("game over")
+	}
+	currentAfterFirstHold := g.current.Type
+	heldAfterFirstHold := g.held.Type
+	g.doHold() // second hold this piece: should be blocked by holdUsed
+	if g.current.Type != currentAfterFirstHold {
+		t.Errorf("double hold should not change current: got %c, want %c",
+			g.current.Type, currentAfterFirstHold)
+	}
+	if g.held.Type != heldAfterFirstHold {
+		t.Errorf("double hold should not change held: got %c, want %c",
+			g.held.Type, heldAfterFirstHold)
+	}
+}
+
+func TestTetrisHold_ResetOnSpawn(t *testing.T) {
+	g := NewTetris(false, 0)
+	g.doHold()
+	if g.IsGameOver() {
+		t.Skip("game over")
+	}
+	if !g.holdUsed {
+		t.Error("holdUsed should be true after hold")
+	}
+	// Hard drop to spawn the next piece
+	g.HandleInput(" ")
+	if g.IsGameOver() {
+		t.Skip("game over after hard drop")
+	}
+	if g.holdUsed {
+		t.Error("holdUsed should reset to false after new piece spawns")
+	}
+}
+
+func TestTetrisHold_CannotHoldReleased(t *testing.T) {
+	g := NewTetris(false, 0)
+	g.HandleInput("c") // hold via input key
+	if g.IsGameOver() {
+		t.Skip("game over")
+	}
+	currentType := g.current.Type
+	g.HandleInput("c") // immediate second hold — should be blocked
+	if g.current.Type != currentType {
+		t.Errorf("second hold in same piece should be blocked; current changed from %c to %c",
+			currentType, g.current.Type)
+	}
+}
+
+// ---- Queue swap -------------------------------------------------------------
+
+func TestTetrisQueue_Swap(t *testing.T) {
+	g := NewTetris(false, 0)
+	// First populate hold
+	g.doHold()
+	if g.IsGameOver() || g.held == nil {
+		t.Skip("hold failed or game over")
+	}
+	heldType := g.held.Type
+	nextType := g.next.Type
+	currentType := g.current.Type
+	g.doQueue()
+	// held ↔ next; current unchanged
+	if g.held.Type != nextType {
+		t.Errorf("after queue swap, held: got %c, want %c", g.held.Type, nextType)
+	}
+	if g.next.Type != heldType {
+		t.Errorf("after queue swap, next: got %c, want %c", g.next.Type, heldType)
+	}
+	if g.current.Type != currentType {
+		t.Errorf("queue swap should not change current: got %c, want %c", g.current.Type, currentType)
+	}
+}
+
+func TestTetrisQueue_EmptyHold(t *testing.T) {
+	g := NewTetris(false, 0)
+	nextType := g.next.Type
+	g.doQueue() // held is nil — should be no-op
+	if g.next.Type != nextType {
+		t.Errorf("doQueue with nil held should not change next: got %c, want %c",
+			g.next.Type, nextType)
 	}
 }
