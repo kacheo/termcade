@@ -17,6 +17,8 @@ type Move struct {
 	prevPencil [9]bool
 }
 
+const MAX_UNDO = 100
+
 type Sudoku struct {
 	board          *Board
 	difficulty     Difficulty
@@ -31,6 +33,8 @@ type Sudoku struct {
 	won            bool
 	quitRequested  bool
 	undoStack      []Move
+	pausedAt       time.Time
+	totalPaused    time.Duration
 }
 
 func NewSudoku(diff Difficulty) *Sudoku {
@@ -52,10 +56,13 @@ func (s *Sudoku) Description() string {
 }
 
 func (s *Sudoku) Update(delta time.Duration) error {
-	if s.isPaused || s.isGameOver {
+	if s.isGameOver {
 		return nil
 	}
-	s.elapsed = time.Since(s.startTime)
+	if s.isPaused {
+		return nil
+	}
+	s.elapsed = time.Since(s.startTime) - s.totalPaused
 	return nil
 }
 
@@ -88,7 +95,10 @@ func (s *Sudoku) HandleInput(key string) {
 			s.setDigit(int(key[0] - '1'))
 		}
 	case "p":
-		s.isPaused = true
+		if !s.isPaused {
+			s.isPaused = true
+			s.pausedAt = time.Now()
+		}
 	case "u":
 		s.undo()
 	case "esc":
@@ -105,6 +115,9 @@ func (s *Sudoku) togglePencilMark(digit int) {
 }
 
 func (s *Sudoku) pushUndo(row, col int) {
+	if len(s.undoStack) >= MAX_UNDO {
+		s.undoStack = s.undoStack[1:]
+	}
 	cell := &s.board.cells[row][col]
 	move := Move{
 		row:         row,
@@ -155,10 +168,14 @@ func (s *Sudoku) setDigit(digit int) {
 	if cell.given {
 		return
 	}
-	if cell.value != 0 || digit+1 != cell.value {
+	newValue := digit + 1
+	if cell.value != 0 && newValue == cell.value {
+		return
+	}
+	if cell.value != 0 {
 		s.pushUndo(s.cursorRow, s.cursorCol)
 	}
-	cell.value = digit + 1
+	cell.value = newValue
 	s.updateConflicts()
 	if s.board.IsComplete() {
 		s.checkWin()
@@ -198,6 +215,12 @@ func (s *Sudoku) QuitRequested() bool   { return s.quitRequested }
 func (s *Sudoku) ClearQuitRequest()    { s.quitRequested = false }
 func (s *Sudoku) GetElapsed() time.Duration { return s.elapsed }
 func (s *Sudoku) Won() bool            { return s.won }
+func (s *Sudoku) Resume() {
+	if s.isPaused {
+		s.totalPaused += time.Since(s.pausedAt)
+		s.isPaused = false
+	}
+}
 
 var gridStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FFFFFF"))
@@ -285,14 +308,16 @@ func (s *Sudoku) renderPencilMarks(b *strings.Builder, cell *Cell, isCursor bool
 	}
 	content := strings.Join(marks, "")
 
-	emptyWidth := 2
-	cellWidth := 2
-	startPos := (cellWidth - len(content)) / 2
-
 	if isCursor {
-		bgStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#333333"))
-		padding := strings.Repeat(" ", startPos)
-		b.WriteString(bgStyle.Render(padding + content + strings.Repeat(" ", emptyWidth-startPos-len(content))))
+		bgStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFF00")).
+			Background(lipgloss.Color("#333333")).
+			Width(2)
+		if len(content) == 1 {
+			b.WriteString(bgStyle.Render(" " + content))
+		} else {
+			b.WriteString(bgStyle.Render(content))
+		}
 	} else {
 		b.WriteString(pencilMarkStyle.Render(fmt.Sprintf("%-2s", content)))
 	}

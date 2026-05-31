@@ -34,14 +34,15 @@ func (d Difficulty) String() string {
 
 func Generate(diff Difficulty) *Board {
 	board := NewBoard()
-	fillBoard(&board)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	fillBoard(&board, r)
 	clues := difficultyClues[diff]
 	removeClues(&board, clues)
 	return &board
 }
 
-func fillBoard(board *Board) {
-	solveRecursive(board, 0, 0)
+func fillBoard(board *Board, r *rand.Rand) {
+	solveRecursive(board, 0, 0, r)
 }
 
 func removeClues(board *Board, targetClues int) {

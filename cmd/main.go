@@ -239,6 +239,9 @@ func (m *model) updatePauseMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		switch m.selected {
 		case 0:
+			if s, ok := m.game.(*sudoku.Sudoku); ok {
+				s.Resume()
+			}
 			m.currentMenu = menuPlaying
 		case 1:
 			m.restartGame()
