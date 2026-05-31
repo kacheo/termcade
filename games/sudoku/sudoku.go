@@ -239,10 +239,10 @@ func (s *Sudoku) Render() string {
 	b.WriteString(gridStyle.Render(fmt.Sprintf("  SUDOKU    Time: %02d:%02d   Score: %d",
 		minutes, seconds, s.score)))
 	b.WriteString("\n")
-	b.WriteString("  ╔═════════════════════════════════╗\n")
+	b.WriteString("  ╔══════════════════════════════╗\n")
 	for r := 0; r < 9; r++ {
 		if r == 3 || r == 6 {
-			b.WriteString("  ║   ────────┼─────────┼───────   ║\n")
+			b.WriteString("  ║ ─────────┼─────────┼─────────║\n")
 		}
 		b.WriteString("  ║ ")
 		for c := 0; c < 9; c++ {
@@ -256,7 +256,7 @@ func (s *Sudoku) Render() string {
 		}
 		b.WriteString("║\n")
 	}
-	b.WriteString("  ╚═════════════════════════════════╝\n")
+	b.WriteString("  ╚══════════════════════════════╝\n")
 	mode := "Normal"
 	if s.pencilMode {
 		mode = "Pencil"
