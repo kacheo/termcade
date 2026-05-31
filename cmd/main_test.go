@@ -731,3 +731,61 @@ func TestRestartGame_Snake(t *testing.T) {
 		t.Errorf("restarted game name = %q, want Snake", m.game.Name())
 	}
 }
+
+// ---- Blackjack Menu Tests ---------------------------------------------------
+
+func TestMainMenu_NavigateToBlackjack(t *testing.T) {
+	m := newModel()
+	m.updateMainMenu(keyMsg("down"))
+	m.updateMainMenu(keyMsg("down"))
+	if m.selected != 2 {
+		t.Fatalf("selected = %d, want 2", m.selected)
+	}
+	m.updateMainMenu(keyMsg("enter"))
+	if m.currentMenu != menuBlackjackOptions {
+		t.Errorf("currentMenu = %v, want menuBlackjackOptions", m.currentMenu)
+	}
+}
+
+func TestBlackjackOptions_StartGame(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuBlackjackOptions
+	m.selected = 0
+	m.updateBlackjackOptions(keyMsg("enter"))
+	if m.currentMenu != menuPlaying {
+		t.Errorf("currentMenu = %v, want menuPlaying", m.currentMenu)
+	}
+	if m.activeGame != gameKindBlackjack {
+		t.Errorf("activeGame = %v, want gameKindBlackjack", m.activeGame)
+	}
+	if m.game == nil {
+		t.Error("game should not be nil after starting")
+	}
+}
+
+func TestBlackjackOptions_Back(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuBlackjackOptions
+	m.selected = 1
+	m.updateBlackjackOptions(keyMsg("enter"))
+	if m.currentMenu != menuMain {
+		t.Errorf("currentMenu = %v, want menuMain", m.currentMenu)
+	}
+}
+
+func TestBlackjackOptions_QKey(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuBlackjackOptions
+	m.updateBlackjackOptions(keyMsg("q"))
+	if m.currentMenu != menuMain {
+		t.Errorf("Q should return to main, got %v", m.currentMenu)
+	}
+}
+
+func TestRenderBlackjackOptions_ContainsTitle(t *testing.T) {
+	m := newModel()
+	out := m.renderBlackjackOptions()
+	if !strings.Contains(out, "Blackjack") {
+		t.Error("options render should contain Blackjack")
+	}
+}
