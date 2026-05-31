@@ -16,10 +16,11 @@
 **Effort:** ~4-6 hours
 
 ### 2. Pong
-**Status:** Menu placeholder exists
+**Status:** IN PROGRESS (feature/pong branch)
 **Controls:** Arrow keys (player) vs AI
 **Why:** Classic, instant competitive feel
 **Effort:** ~4-6 hours
+**Features:** Configurable speed increase, 3 AI difficulty levels
 
 ### 3. Minesweeper
 **Controls:** Arrow keys + Enter to reveal/flag
