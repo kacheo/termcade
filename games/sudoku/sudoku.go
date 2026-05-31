@@ -1,7 +1,13 @@
 package sudoku
 
 import (
+	"fmt"
+	"strings"
 	"time"
+
+	"tmvgs/core/ui"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Sudoku struct {
@@ -125,3 +131,52 @@ func (s *Sudoku) IsGameOver() bool      { return s.isGameOver }
 func (s *Sudoku) GetScore() int        { return s.score }
 func (s *Sudoku) GetLevel() int        { return int(s.difficulty) }
 func (s *Sudoku) GetLines() int        { return 0 }
+
+var gridStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#FFFFFF"))
+
+func (s *Sudoku) Render() string {
+	var b strings.Builder
+	minutes := int(s.elapsed.Seconds()) / 60
+	seconds := int(s.elapsed.Seconds()) % 60
+	b.WriteString("\n")
+	b.WriteString(gridStyle.Render(fmt.Sprintf("  SUDOKU    Time: %02d:%02d   Score: %d",
+		minutes, seconds, s.score)))
+	b.WriteString("\n")
+	b.WriteString("  ╔══════════════════════════════════════════╗\n")
+	b.WriteString("  ║     1   2   3   4   5   6   7   8   9     ║\n")
+	for r := 0; r < 9; r++ {
+		if r == 3 || r == 6 {
+			b.WriteString("  ║   ─────────┼─────────┼─────────     ║\n")
+		}
+		b.WriteString(fmt.Sprintf("  ║ %d ", r+1))
+		for c := 0; c < 9; c++ {
+			if c == 3 || c == 6 {
+				b.WriteString("│")
+			}
+			cell := s.board.cells[r][c]
+			if cell.value == 0 {
+				b.WriteString(" ·")
+			} else {
+				color := ui.GetPieceColor(byte('1' + cell.value - 1))
+				if cell.conflict {
+					color = lipgloss.Color("196")
+				}
+				if cell.given {
+					b.WriteString(fmt.Sprintf("\x1b[1m%2d\x1b[0m", cell.value))
+				} else {
+					b.WriteString(lipgloss.NewStyle().Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
+				}
+			}
+			b.WriteString(" ")
+		}
+		b.WriteString("║\n")
+	}
+	b.WriteString("  ╚══════════════════════════════════════════╝\n")
+	mode := "Normal"
+	if s.pencilMode {
+		mode = "Pencil"
+	}
+	b.WriteString(fmt.Sprintf("  Mode: [%s]   Arrow keys: move   1-9: enter   Space: toggle pencil\n", mode))
+	return b.String()
+}

@@ -1,6 +1,7 @@
 package sudoku
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -34,5 +35,16 @@ func TestPencilMode(t *testing.T) {
 	game.HandleInput(" ")
 	if !game.pencilMode {
 		t.Error("pencil mode should be true after space")
+	}
+}
+
+func TestRender(t *testing.T) {
+	game := NewSudoku(DifficultyEasy)
+	output := game.Render()
+	if len(output) == 0 {
+		t.Error("render should return non-empty string")
+	}
+	if !strings.Contains(output, "SUDOKU") {
+		t.Error("render should contain SUDOKU header")
 	}
 }
