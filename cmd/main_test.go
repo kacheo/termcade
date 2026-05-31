@@ -606,7 +606,7 @@ func TestUpdate_KeyMsg_Routing(t *testing.T) {
 // ---- View dispatch ----------------------------------------------------------
 
 func TestView_AllMenuStates(t *testing.T) {
-	states := []menuState{menuMain, menuTetrisOptions, menuPlaying, menuPause, menuGameOver}
+	states := []menuState{menuMain, menuTetrisOptions, menuSnakeOptions, menuPlaying, menuPause, menuGameOver}
 	for _, state := range states {
 		m := newModel()
 		m.currentMenu = state
@@ -617,5 +617,116 @@ func TestView_AllMenuStates(t *testing.T) {
 		if out == "" {
 			t.Errorf("View() for state %v returned empty string", state)
 		}
+	}
+}
+
+// ---- renderSnakeOptions -----------------------------------------------------
+
+func TestRenderSnakeOptions_ContainsItems(t *testing.T) {
+	m := newModel()
+	out := m.renderSnakeOptions()
+	for _, want := range []string{"Snake", "Start Game", "Back"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("renderSnakeOptions should contain %q", want)
+		}
+	}
+}
+
+func TestRenderSnakeOptions_SelectionMarker(t *testing.T) {
+	for sel := range 2 {
+		m := newModel()
+		m.selected = sel
+		out := m.renderSnakeOptions()
+		if !strings.Contains(out, "▶") {
+			t.Errorf("selected=%d: render should contain selection marker ▶", sel)
+		}
+	}
+}
+
+// ---- updateSnakeOptions -----------------------------------------------------
+
+func TestUpdateSnakeOptions_Navigate(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSnakeOptions
+	m.selected = 0
+
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyDown})
+	if m.selected != 1 {
+		t.Errorf("down: got %d, want 1", m.selected)
+	}
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyDown})
+	if m.selected != 1 {
+		t.Errorf("down past end: got %d, want 1 (clamped)", m.selected)
+	}
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyUp})
+	if m.selected != 0 {
+		t.Errorf("up: got %d, want 0", m.selected)
+	}
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyUp})
+	if m.selected != 0 {
+		t.Errorf("up past start: got %d, want 0 (clamped)", m.selected)
+	}
+}
+
+func TestUpdateSnakeOptions_StartGame(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSnakeOptions
+	m.selected = 0
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyEnter})
+
+	if m.currentMenu != menuPlaying {
+		t.Errorf("Start Game: got menu %v, want menuPlaying", m.currentMenu)
+	}
+	if m.game == nil {
+		t.Error("Start Game should create a game")
+	}
+	if m.activeGame != gameKindSnake {
+		t.Errorf("activeGame = %v, want gameKindSnake", m.activeGame)
+	}
+	if m.gameOver {
+		t.Error("gameOver should be false after starting")
+	}
+}
+
+func TestUpdateSnakeOptions_Back(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSnakeOptions
+	m.selected = 1
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyEnter})
+	if m.currentMenu != menuMain {
+		t.Errorf("Back: got menu %v, want menuMain", m.currentMenu)
+	}
+}
+
+func TestUpdateSnakeOptions_Quit(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSnakeOptions
+	m.updateSnakeOptions(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	if m.currentMenu != menuMain {
+		t.Errorf("q: got menu %v, want menuMain", m.currentMenu)
+	}
+}
+
+// ---- restartGame Snake path -------------------------------------------------
+
+func TestRestartGame_Snake(t *testing.T) {
+	m := newModel()
+	m.activeGame = gameKindSnake
+	m.restartGame()
+
+	if m.game == nil {
+		t.Fatal("restartGame should create a game")
+	}
+	if m.game.GetScore() != 0 {
+		t.Errorf("restarted snake score = %d, want 0", m.game.GetScore())
+	}
+	if m.game.GetLines() != 0 {
+		t.Errorf("restarted snake food eaten = %d, want 0", m.game.GetLines())
+	}
+	if m.game.IsGameOver() {
+		t.Error("restarted snake should not be game over")
+	}
+	if m.game.Name() != "Snake" {
+		t.Errorf("restarted game name = %q, want Snake", m.game.Name())
 	}
 }
