@@ -32,8 +32,19 @@ func TestBoardInit(t *testing.T) {
 func TestGetCandidates(t *testing.T) {
     board := NewBoard()
     board.cells[0][0].value = 5
+
     candidates := board.GetCandidates(1, 0)
-    if candidates[4] { // 5 should be eliminated
-        t.Error("5 should not be a candidate at [1][0]")
+    if candidates[4] {
+        t.Error("5 should not be a candidate at [1][0] (column elimination)")
+    }
+
+    candidates = board.GetCandidates(0, 1)
+    if candidates[4] {
+        t.Error("5 should not be a candidate at [0][1] (row elimination)")
+    }
+
+    candidates = board.GetCandidates(1, 1)
+    if candidates[4] {
+        t.Error("5 should not be a candidate at [1][1] (box elimination)")
     }
 }
