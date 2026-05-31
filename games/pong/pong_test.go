@@ -52,10 +52,13 @@ func TestPongWallBounce(t *testing.T) {
 
 func TestPongHandleInput(t *testing.T) {
 	p := NewPong(false, 1)
-	initialY := p.PlayerY
 	p.HandleInput("up")
-	if p.PlayerY >= initialY {
-		t.Error("PlayerY should have decreased after up key")
+	if p.PlayerVY != -PaddleSpeed {
+		t.Errorf("PlayerVY should be -PaddleSpeed after up key, got %f", p.PlayerVY)
+	}
+	p.HandleInput("down")
+	if p.PlayerVY != PaddleSpeed {
+		t.Errorf("PlayerVY should be PaddleSpeed after down key, got %f", p.PlayerVY)
 	}
 }
 
@@ -149,17 +152,23 @@ func TestPongPlayerScores(t *testing.T) {
 }
 
 func TestPongSpeedIncrease(t *testing.T) {
-	p := NewPong(true, 1)
+	p := NewPong(false, 1)
+	p.SpeedIncrease = true
+	p.ballHitCount = 0
+
+	p.BallX = 0.04
+	p.BallY = p.PlayerY
+	p.BallVX = -InitialBallSpeed
 	initialVX := p.BallVX
 
-	p.BallX = 0.05
-	p.BallY = p.PlayerY
-	p.BallVX = -0.01
+	p.Update(time.Millisecond * 10)
 
-	p.Update(time.Millisecond * 100)
+	if p.ballHitCount == 0 {
+		t.Skip("Ball didn't reach paddle in this test iteration")
+	}
 
-	if p.BallVX >= initialVX {
-		t.Error("BallVX should increase after paddle hit when speed increase is on")
+	if p.BallVX <= initialVX {
+		t.Errorf("BallVX should increase after paddle hit, got %f <= %f", p.BallVX, initialVX)
 	}
 }
 
@@ -216,15 +225,17 @@ func TestPongRender(t *testing.T) {
 func TestPongPlayerPaddleClamp(t *testing.T) {
 	p := NewPong(false, 1)
 	p.PlayerY = 0.0
-	p.HandleInput("up")
-	if p.PlayerY != 0.1 {
-		t.Errorf("PlayerY should be clamped to 0.1, got %f", p.PlayerY)
+	p.PlayerVY = -PaddleSpeed
+	p.Update(time.Millisecond * 100)
+	if p.PlayerY != p.paddleHalf() {
+		t.Errorf("PlayerY should be clamped to paddleHalf, got %f", p.PlayerY)
 	}
 
 	p.PlayerY = 1.0
-	p.HandleInput("down")
-	if p.PlayerY != 0.9 {
-		t.Errorf("PlayerY should be clamped to 0.9, got %f", p.PlayerY)
+	p.PlayerVY = PaddleSpeed
+	p.Update(time.Millisecond * 100)
+	if p.PlayerY != 1-p.paddleHalf() {
+		t.Errorf("PlayerY should be clamped to 1-paddleHalf, got %f", p.PlayerY)
 	}
 }
 

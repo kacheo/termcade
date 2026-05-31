@@ -13,7 +13,8 @@ const (
 	PaddleHeight       = 4
 	WinScore           = 5
 	PaddleMargin       = 0.05
-	InitialBallSpeed   = 0.02
+	InitialBallSpeed   = 0.008
+	PaddleSpeed        = 0.12
 	SpeedIncreaseRate  = 1.1
 	MaxSpeedMultiplier = 2.0
 	MaxPaddleHits      = 10
@@ -21,6 +22,7 @@ const (
 
 type Pong struct {
 	PlayerY       float64
+	PlayerVY      float64
 	AiY           float64
 	BallX         float64
 	BallY         float64
@@ -83,6 +85,9 @@ func (p *Pong) Update(delta time.Duration) error {
 	if p.GameOver || p.Paused {
 		return nil
 	}
+
+	p.PlayerY += p.PlayerVY
+	p.PlayerY = p.clampPaddleY(p.PlayerY)
 
 	p.BallX += p.BallVX
 	p.BallY += p.BallVY
@@ -199,17 +204,15 @@ func (p *Pong) HandleInput(key string) {
 	}
 	switch key {
 	case "up", "k":
-		p.PlayerY -= 0.05
+		p.PlayerVY = -PaddleSpeed
 	case "down", "j":
-		p.PlayerY += 0.05
+		p.PlayerVY = PaddleSpeed
 	case "p":
 		p.Paused = !p.Paused
 	case "q":
 		p.GameOver = true
 		p.Winner = "AI"
 	}
-
-	p.PlayerY = p.clampPaddleY(p.PlayerY)
 }
 
 func (p *Pong) Render() string {
