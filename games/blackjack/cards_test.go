@@ -20,7 +20,7 @@ func TestHandValue(t *testing.T) {
 	}
 	for _, c := range cases {
 		if got := c.hand.Value(); got != c.want {
-			t.Errorf("Value() = %d, want %d", got, c.want)
+			t.Errorf("hand %v: Value() = %d, want %d", c.hand, got, c.want)
 		}
 	}
 }

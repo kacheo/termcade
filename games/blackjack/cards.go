@@ -139,6 +139,7 @@ func (d Deck) Shuffled(r *rand.Rand) Deck {
 	return out
 }
 
+// Draw removes and returns the top card. Panics if the deck is empty.
 func (d *Deck) Draw() Card {
 	c := (*d)[0]
 	*d = (*d)[1:]
