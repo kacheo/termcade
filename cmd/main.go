@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"tmvgs/core"
+	"tmvgs/games/blackjack"
 	"tmvgs/games/snake"
 	"tmvgs/games/sudoku"
 	"tmvgs/games/tetris"
@@ -25,6 +26,7 @@ const (
 	menuTetrisOptions
 	menuSnakeOptions
 	menuSudokuOptions
+	menuBlackjackOptions
 	menuPlaying
 	menuPause
 	menuGameOver
@@ -36,6 +38,7 @@ const (
 	gameKindTetris gameKind = iota
 	gameKindSnake
 	gameKindSudoku
+	gameKindBlackjack
 )
 
 type model struct {
@@ -92,6 +95,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSnakeOptions(msg)
 		case menuSudokuOptions:
 			return m.updateSudokuOptions(msg)
+		case menuBlackjackOptions:
+			return m.updateBlackjackOptions(msg)
 		case menuPlaying:
 			return m.updateGame(msg)
 		case menuPause:
@@ -104,7 +109,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "", "Quit"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
@@ -124,6 +129,9 @@ func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selected = 0
 		case 2:
 			m.currentMenu = menuSudokuOptions
+			m.selected = 0
+		case 3:
+			m.currentMenu = menuBlackjackOptions
 			m.selected = 0
 		case 5:
 			return m, tea.Quit
@@ -254,6 +262,34 @@ func (m *model) updateSudokuOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) updateBlackjackOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.selected > 0 {
+			m.selected--
+		}
+	case "down", "j":
+		if m.selected < 1 {
+			m.selected++
+		}
+	case "enter", " ":
+		if m.selected == 0 {
+			m.game = blackjack.NewBlackjack(3)
+			m.activeGame = gameKindBlackjack
+			m.currentMenu = menuPlaying
+			m.gameOver = false
+			m.selected = 0
+		} else if m.selected == 1 {
+			m.currentMenu = menuMain
+			m.selected = 0
+		}
+	case "q":
+		m.currentMenu = menuMain
+		m.selected = 0
+	}
+	return m, nil
+}
+
 func (m *model) restartGame() {
 	switch m.activeGame {
 	case gameKindTetris:
@@ -262,6 +298,8 @@ func (m *model) restartGame() {
 		m.game = snake.NewSnake()
 	case gameKindSudoku:
 		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
+	case gameKindBlackjack:
+		m.game = blackjack.NewBlackjack(3)
 	}
 }
 
@@ -388,6 +426,8 @@ func (m *model) View() string {
 		return m.renderSnakeOptions()
 	case menuSudokuOptions:
 		return m.renderSudokuOptions()
+	case menuBlackjackOptions:
+		return m.renderBlackjackOptions()
 	case menuPlaying:
 		return m.renderGame()
 	case menuPause:
@@ -399,7 +439,7 @@ func (m *model) View() string {
 }
 
 func (m *model) renderMainMenu() string {
-	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "", "Quit"}
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
@@ -539,6 +579,30 @@ func (m *model) renderSudokuOptions() string {
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
 	sb.WriteString("    ←→ Change   ↑↓ Select   Enter Confirm   Q Back\n")
+	return sb.String()
+}
+
+func (m *model) renderBlackjackOptions() string {
+	var sb strings.Builder
+	sb.WriteString("\n")
+	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+	sb.WriteString("  ║       Blackjack — Ready?              ║\n")
+	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+	sb.WriteString("  ║                                       ║\n")
+	sb.WriteString("  ║   Beat the dealer. You and 3 AI       ║\n")
+	sb.WriteString("  ║   players vs the house. Hit or        ║\n")
+	sb.WriteString("  ║   stand — closest to 21 wins.         ║\n")
+	sb.WriteString("  ║                                       ║\n")
+	items := []string{"Start Game", "Back"}
+	for i, item := range items {
+		if i == m.selected {
+			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
+		}
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", item))
+	}
+	sb.WriteString("  ║                                       ║\n")
+	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
+	sb.WriteString("    ↑↓ Navigate   Enter Select\n")
 	return sb.String()
 }
 
