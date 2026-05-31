@@ -2,6 +2,7 @@ package pong
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -13,31 +14,32 @@ const (
 	PaddleHeight        = 4
 	WinScore            = 5
 	PaddleMargin        = 0.05
-	InitialBallSpeed    = 0.008
-	PaddleBoost         = 0.03
-	PaddleDecay         = 0.85
-	PaddleMinVelocity   = 0.001
+	InitialBallSpeed    = 0.025
+	PaddleSpeed         = 0.012
+	PaddleInputWindow   = 50 * time.Millisecond
 	SpeedIncreaseRate   = 1.1
 	MaxSpeedMultiplier  = 2.0
 	MaxPaddleHits       = 10
 )
 
 type Pong struct {
-	PlayerY       float64
-	PlayerVY      float64
-	AiY           float64
-	BallX         float64
-	BallY         float64
-	BallVX        float64
-	BallVY        float64
-	PlayerScore   int
-	AiScore       int
-	Paused        bool
-	GameOver      bool
-	Winner        string
+	PlayerY      float64
+	AiY          float64
+	BallX        float64
+	BallY        float64
+	BallVX       float64
+	BallVY       float64
+	PlayerScore  int
+	AiScore      int
+	Paused       bool
+	GameOver     bool
+	Winner       string
 	SpeedIncrease bool
-	AiDifficulty  int // 0=Easy, 1=Medium, 2=Hard
-	ballHitCount  int
+	AiDifficulty int // 0=Easy, 1=Medium, 2=Hard
+	ballHitCount int
+
+	playerMoveDir     float64
+	playerInputExpiry time.Time
 }
 
 func NewPong(speedIncrease bool, aiDifficulty int) *Pong {
@@ -102,19 +104,9 @@ func (p *Pong) Update(delta time.Duration) error {
 		return nil
 	}
 
-	p.PlayerY += p.PlayerVY
-	p.PlayerY = p.clampPaddleY(p.PlayerY)
-
-	if p.PlayerVY > PaddleMinVelocity {
-		p.PlayerVY *= PaddleDecay
-		if p.PlayerVY < PaddleMinVelocity {
-			p.PlayerVY = 0
-		}
-	} else if p.PlayerVY < -PaddleMinVelocity {
-		p.PlayerVY *= PaddleDecay
-		if p.PlayerVY > -PaddleMinVelocity {
-			p.PlayerVY = 0
-		}
+	if time.Now().Before(p.playerInputExpiry) {
+		p.PlayerY += p.playerMoveDir * PaddleSpeed
+		p.PlayerY = p.clampPaddleY(p.PlayerY)
 	}
 
 	p.BallX += p.BallVX
@@ -244,9 +236,11 @@ func (p *Pong) HandleInput(key string) {
 	}
 	switch key {
 	case "up", "k":
-		p.PlayerVY -= PaddleBoost
+		p.playerMoveDir = -1.0
+		p.playerInputExpiry = time.Now().Add(PaddleInputWindow)
 	case "down", "j":
-		p.PlayerVY += PaddleBoost
+		p.playerMoveDir = 1.0
+		p.playerInputExpiry = time.Now().Add(PaddleInputWindow)
 	case "p":
 		p.Paused = !p.Paused
 	case "q":
@@ -286,8 +280,9 @@ func (p *Pong) Render() string {
 				}
 			}
 
-			ballX := int(p.BallX * float64(FieldWidth))
-			if ballX == x && int(p.BallY*float64(FieldHeight)) == y {
+			ballX := int(math.Round(p.BallX * float64(FieldWidth)))
+			ballY := int(math.Round(p.BallY * float64(FieldHeight)))
+			if ballX == x && ballY == y {
 				char = "●"
 			}
 

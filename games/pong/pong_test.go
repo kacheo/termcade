@@ -52,13 +52,19 @@ func TestPongWallBounce(t *testing.T) {
 
 func TestPongHandleInput(t *testing.T) {
 	p := NewPong(false, 1)
+	initialY := p.PlayerY
+
 	p.HandleInput("up")
-	if p.PlayerVY != -PaddleBoost {
-		t.Errorf("PlayerVY should be -PaddleBoost after up key, got %f", p.PlayerVY)
+	p.Update(time.Millisecond * 10)
+	if p.PlayerY >= initialY {
+		t.Errorf("paddle should move up after up key, got %f (was %f)", p.PlayerY, initialY)
 	}
+
+	afterUp := p.PlayerY
 	p.HandleInput("down")
-	if p.PlayerVY != 0 {
-		t.Errorf("PlayerVY should be 0 after up+down (cancels out), got %f", p.PlayerVY)
+	p.Update(time.Millisecond * 10)
+	if p.PlayerY <= afterUp {
+		t.Errorf("paddle should move down after down key, got %f (was %f)", p.PlayerY, afterUp)
 	}
 }
 
@@ -224,16 +230,17 @@ func TestPongRender(t *testing.T) {
 
 func TestPongPlayerPaddleClamp(t *testing.T) {
 	p := NewPong(false, 1)
+
 	p.PlayerY = 0.0
-	p.PlayerVY = -PaddleBoost
-	p.Update(time.Millisecond * 100)
+	p.HandleInput("up")
+	p.Update(time.Millisecond * 10)
 	if p.PlayerY != p.paddleHalf() {
 		t.Errorf("PlayerY should be clamped to paddleHalf, got %f", p.PlayerY)
 	}
 
 	p.PlayerY = 1.0
-	p.PlayerVY = PaddleBoost
-	p.Update(time.Millisecond * 100)
+	p.HandleInput("down")
+	p.Update(time.Millisecond * 10)
 	if p.PlayerY != 1-p.paddleHalf() {
 		t.Errorf("PlayerY should be clamped to 1-paddleHalf, got %f", p.PlayerY)
 	}
