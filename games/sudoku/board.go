@@ -53,7 +53,10 @@ func (b *Board) GetCandidates(row, col int) [9]bool {
 }
 
 func (b *Board) HasConflict(row, col int) bool {
-    val := b.cells[row][col].value
+	if row < 0 || row >= 9 || col < 0 || col >= 9 {
+		return false
+	}
+	val := b.cells[row][col].value
     if val == 0 {
         return false
     }
@@ -80,10 +83,13 @@ func (b *Board) HasConflict(row, col int) bool {
 }
 
 func (b *Board) ClearCell(row, col int) {
-    if b.cells[row][col].given {
-        return
-    }
-    b.cells[row][col].value = 0
+	if row < 0 || row >= 9 || col < 0 || col >= 9 {
+		return
+	}
+	if b.cells[row][col].given {
+		return
+	}
+	b.cells[row][col].value = 0
     b.cells[row][col].conflict = false
     for i := 0; i < 9; i++ {
         b.cells[row][col].pencilMarks[i] = false
@@ -91,6 +97,13 @@ func (b *Board) ClearCell(row, col int) {
 }
 
 func (b *Board) SetValue(row, col, val int, given bool) {
-    b.cells[row][col].value = val
-    b.cells[row][col].given = given
+	if row < 0 || row >= 9 || col < 0 || col >= 9 {
+		return
+	}
+	b.cells[row][col].value = val
+	b.cells[row][col].given = given
+	for i := 0; i < 9; i++ {
+		b.cells[row][col].pencilMarks[i] = false
+	}
+	b.cells[row][col].conflict = b.HasConflict(row, col)
 }
