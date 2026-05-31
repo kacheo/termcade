@@ -274,6 +274,22 @@ func (m *model) updateGameOverMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.game = nil
 			m.selected = 0
 		}
+	case "q":
+		// Save score before quitting
+		if m.game != nil && m.game.GetScore() > 0 {
+			entry := core.ScoreEntry{
+				Name:  "AAA",
+				Score: m.game.GetScore(),
+				Lines: m.game.GetLines(),
+				Level: m.game.GetLevel(),
+				When:  core.FormatTime(time.Now()),
+			}
+			m.scores = core.InsertScore(m.scores, entry)
+			core.SaveScores(m.scores)
+		}
+		m.currentMenu = menuMain
+		m.game = nil
+		m.selected = 0
 	}
 	return m, nil
 }
