@@ -8,16 +8,18 @@ import (
 )
 
 const (
-	FieldWidth         = 40
-	FieldHeight        = 20
-	PaddleHeight       = 4
-	WinScore           = 5
-	PaddleMargin       = 0.05
-	InitialBallSpeed   = 0.008
-	PaddleSpeed        = 0.02
-	SpeedIncreaseRate  = 1.1
-	MaxSpeedMultiplier = 2.0
-	MaxPaddleHits      = 10
+	FieldWidth          = 40
+	FieldHeight         = 20
+	PaddleHeight        = 4
+	WinScore            = 5
+	PaddleMargin        = 0.05
+	InitialBallSpeed    = 0.008
+	PaddleBoost         = 0.03
+	PaddleDecay         = 0.85
+	PaddleMinVelocity   = 0.001
+	SpeedIncreaseRate   = 1.1
+	MaxSpeedMultiplier  = 2.0
+	MaxPaddleHits       = 10
 )
 
 type Pong struct {
@@ -88,6 +90,18 @@ func (p *Pong) Update(delta time.Duration) error {
 
 	p.PlayerY += p.PlayerVY
 	p.PlayerY = p.clampPaddleY(p.PlayerY)
+
+	if p.PlayerVY > PaddleMinVelocity {
+		p.PlayerVY *= PaddleDecay
+		if p.PlayerVY < PaddleMinVelocity {
+			p.PlayerVY = 0
+		}
+	} else if p.PlayerVY < -PaddleMinVelocity {
+		p.PlayerVY *= PaddleDecay
+		if p.PlayerVY > -PaddleMinVelocity {
+			p.PlayerVY = 0
+		}
+	}
 
 	p.BallX += p.BallVX
 	p.BallY += p.BallVY
@@ -204,15 +218,9 @@ func (p *Pong) HandleInput(key string) {
 	}
 	switch key {
 	case "up", "k":
-		if p.PlayerVY > 0 {
-			p.PlayerVY = 0
-		}
-		p.PlayerVY = -PaddleSpeed
+		p.PlayerVY -= PaddleBoost
 	case "down", "j":
-		if p.PlayerVY < 0 {
-			p.PlayerVY = 0
-		}
-		p.PlayerVY = PaddleSpeed
+		p.PlayerVY += PaddleBoost
 	case "p":
 		p.Paused = !p.Paused
 	case "q":
