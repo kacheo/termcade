@@ -1,6 +1,9 @@
 package blackjack
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestNewBlackjack_Metadata(t *testing.T) {
 	g := NewBlackjack(2)
@@ -55,5 +58,80 @@ func TestInitialDeal(t *testing.T) {
 	}
 	if g.phase != phaseDealing {
 		t.Errorf("initial phase = %v, want phaseDealing", g.phase)
+	}
+}
+
+func TestPhase_DealingToAITurn(t *testing.T) {
+	g := NewBlackjack(2)
+	g.Update(dealDelay + time.Millisecond)
+	if g.phase != phaseAITurn {
+		t.Errorf("expected phaseAITurn, got %v", g.phase)
+	}
+}
+
+func TestPhase_DealingToPlayerTurn_NoAI(t *testing.T) {
+	g := NewBlackjack(0)
+	g.Update(dealDelay + time.Millisecond)
+	if g.phase != phasePlayerTurn {
+		t.Errorf("expected phasePlayerTurn (no AI), got %v", g.phase)
+	}
+}
+
+func TestPhase_AIStandsAdvancesToPlayer(t *testing.T) {
+	g := NewBlackjack(1)
+	g.players[1].hand = Hand{{Ten, Spades}, {Seven, Hearts}} // hard 17 — AI will stand
+	g.Update(dealDelay + time.Millisecond)                    // → phaseAITurn
+	g.Update(aiStepDelay + time.Millisecond)                  // AI acts
+	if g.phase != phasePlayerTurn {
+		t.Errorf("after AI stands expected phasePlayerTurn, got %v", g.phase)
+	}
+	if g.players[1].status != statusStand {
+		t.Errorf("AI status = %v, want statusStand", g.players[1].status)
+	}
+}
+
+func TestEvaluate_PlayerWinsVsBustedDealer(t *testing.T) {
+	g := NewBlackjack(0)
+	g.dealer = Hand{{Ten, Spades}, {Six, Hearts}, {Seven, Clubs}} // 23
+	g.players[0].hand = Hand{{King, Spades}, {Eight, Hearts}}     // 18
+	g.players[0].status = statusStand
+	g.evaluateResults()
+	if g.players[0].result != "WIN" {
+		t.Errorf("result = %q, want WIN", g.players[0].result)
+	}
+	if g.wins != 1 {
+		t.Errorf("wins = %d, want 1", g.wins)
+	}
+}
+
+func TestEvaluate_DealerWins(t *testing.T) {
+	g := NewBlackjack(0)
+	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}            // 19
+	g.players[0].hand = Hand{{King, Spades}, {Eight, Hearts}} // 18
+	g.players[0].status = statusStand
+	g.evaluateResults()
+	if g.players[0].result != "LOSE" {
+		t.Errorf("result = %q, want LOSE", g.players[0].result)
+	}
+}
+
+func TestEvaluate_Push(t *testing.T) {
+	g := NewBlackjack(0)
+	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}           // 19
+	g.players[0].hand = Hand{{King, Spades}, {Nine, Clubs}}  // 19
+	g.players[0].status = statusStand
+	g.evaluateResults()
+	if g.players[0].result != "PUSH" {
+		t.Errorf("result = %q, want PUSH", g.players[0].result)
+	}
+}
+
+func TestEvaluate_BustLoses(t *testing.T) {
+	g := NewBlackjack(0)
+	g.players[0].hand = Hand{{Ten, Spades}, {Six, Hearts}, {Eight, Clubs}} // 24
+	g.players[0].status = statusBust
+	g.evaluateResults()
+	if g.players[0].result != "LOSE" {
+		t.Errorf("result = %q, want LOSE", g.players[0].result)
 	}
 }

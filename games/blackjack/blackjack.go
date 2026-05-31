@@ -101,6 +101,116 @@ func (b *Blackjack) GetScore() int       { return b.wins }
 func (b *Blackjack) GetLevel() int       { return 0 }
 func (b *Blackjack) GetLines() int       { return b.rounds }
 
-func (b *Blackjack) Update(delta time.Duration) error { return nil }
-func (b *Blackjack) HandleInput(key string)           {}
-func (b *Blackjack) Render() string                   { return "BLACKJACK\nloading..." }
+func (b *Blackjack) Update(delta time.Duration) error {
+	if b.paused || b.gameOver {
+		return nil
+	}
+	b.elapsed += delta
+	switch b.phase {
+	case phaseDealing:
+		if b.elapsed >= dealDelay {
+			b.elapsed = 0
+			b.transitionFromDealing()
+		}
+	case phaseAITurn:
+		if b.elapsed >= aiStepDelay {
+			b.elapsed = 0
+			b.stepAI()
+		}
+	case phaseDealerTurn:
+		if b.elapsed >= dealerDelay {
+			b.elapsed = 0
+			b.stepDealer()
+		}
+	}
+	return nil
+}
+
+func (b *Blackjack) transitionFromDealing() {
+	if len(b.players) > 1 {
+		b.aiIdx = 1
+		b.phase = phaseAITurn
+		b.skipDoneAIs()
+	} else {
+		b.phase = phasePlayerTurn
+	}
+}
+
+func (b *Blackjack) skipDoneAIs() {
+	for b.aiIdx < len(b.players) && b.players[b.aiIdx].status != statusPlaying {
+		b.aiIdx++
+	}
+	if b.aiIdx >= len(b.players) {
+		if b.players[0].status == statusPlaying {
+			b.phase = phasePlayerTurn
+		} else {
+			b.phase = phaseDealerTurn
+			b.elapsed = 0
+		}
+	}
+}
+
+func (b *Blackjack) stepAI() {
+	if b.aiIdx >= len(b.players) {
+		return
+	}
+	ai := b.players[b.aiIdx]
+	if ShouldHit(ai.hand) {
+		ai.hand = append(ai.hand, b.deck.Draw())
+		if ai.hand.IsBust() {
+			ai.status = statusBust
+			b.aiIdx++
+			b.skipDoneAIs()
+		}
+	} else {
+		ai.status = statusStand
+		b.aiIdx++
+		b.skipDoneAIs()
+	}
+}
+
+func (b *Blackjack) stepDealer() {
+	dv := b.dealer.Value()
+	if dv < 17 || (dv == 17 && b.dealer.IsSoft()) {
+		b.dealer = append(b.dealer, b.deck.Draw())
+	} else {
+		b.evaluateResults()
+		b.phase = phaseResults
+	}
+}
+
+func (b *Blackjack) evaluateResults() {
+	dv := b.dealer.Value()
+	dealerBust := b.dealer.IsBust()
+	dealerBJ := b.dealer.IsBlackjack()
+	for _, p := range b.players {
+		switch p.status {
+		case statusBust:
+			p.result = "LOSE"
+		case statusBlackjack:
+			if dealerBJ {
+				p.result = "PUSH"
+			} else {
+				p.result = "WIN"
+				if !p.isAI {
+					b.wins++
+				}
+			}
+		default:
+			pv := p.hand.Value()
+			if dealerBust || pv > dv {
+				p.result = "WIN"
+				if !p.isAI {
+					b.wins++
+				}
+			} else if pv == dv {
+				p.result = "PUSH"
+			} else {
+				p.result = "LOSE"
+			}
+		}
+	}
+}
+
+func (b *Blackjack) HandleInput(key string) {}
+func (b *Blackjack) Render() string         { return "BLACKJACK\nloading..." }
