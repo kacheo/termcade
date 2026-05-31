@@ -1,6 +1,7 @@
 package blackjack
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -201,5 +202,40 @@ func TestHandleInput_IgnoredDuringDealing(t *testing.T) {
 	g.HandleInput("h")
 	if len(g.players[0].hand) != before {
 		t.Error("hit during phaseDealing should be ignored")
+	}
+}
+
+func TestRender_ContainsLabels(t *testing.T) {
+	g := NewBlackjack(2)
+	out := g.Render()
+	for _, want := range []string{"BLACKJACK", "DEALER", "YOU", "AI-1", "AI-2"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("Render() missing %q", want)
+		}
+	}
+}
+
+func TestRender_ResultsPhaseShowsPromptAndResult(t *testing.T) {
+	g := NewBlackjack(0)
+	g.phase = phaseResults
+	g.players[0].result = "WIN"
+	out := g.Render()
+	if !strings.Contains(out, "WIN") {
+		t.Error("Render() in phaseResults should show WIN")
+	}
+	if !strings.Contains(out, "ENTER") {
+		t.Error("Render() in phaseResults should show ENTER prompt")
+	}
+}
+
+func TestRender_PlayerTurnShowsActions(t *testing.T) {
+	g := NewBlackjack(0)
+	g.Update(dealDelay + time.Millisecond) // → phasePlayerTurn
+	out := g.Render()
+	if !strings.Contains(out, "Hit") && !strings.Contains(out, "H-Hit") {
+		t.Error("player turn should show hit action")
+	}
+	if !strings.Contains(out, "Stand") && !strings.Contains(out, "S-Stand") {
+		t.Error("player turn should show stand action")
 	}
 }

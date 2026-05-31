@@ -1,8 +1,12 @@
 package blackjack
 
 import (
+	"fmt"
 	"math/rand"
+	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 type phase int
@@ -240,4 +244,148 @@ func (b *Blackjack) HandleInput(key string) {
 		}
 	}
 }
-func (b *Blackjack) Render() string         { return "BLACKJACK\nloading..." }
+var (
+	bjBorderSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	bjTitleSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
+	bjRedCardSty   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555"))
+	bjWhiteCardSty = lipgloss.NewStyle().Foreground(lipgloss.Color("#EEEEEE"))
+	bjHiddenSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	bjLabelSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	bjActiveSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF88")).Bold(true)
+	bjTextSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	bjWinSty       = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true)
+	bjLoseSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+	bjPushSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
+	bjBustSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444")).Bold(true)
+	bjBJSty        = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
+	bjActionSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Background(lipgloss.Color("#333333"))
+	bjHotSty       = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#00FF88")).Bold(true)
+)
+
+const bjInnerWidth = 46
+
+func bjRenderCard(c Card) string {
+	s := fmt.Sprintf("[%s%s]", c.Symbol(), c.SuitSymbol())
+	if c.IsRed() {
+		return bjRedCardSty.Render(s)
+	}
+	return bjWhiteCardSty.Render(s)
+}
+
+func bjRenderHidden() string { return bjHiddenSty.Render("[??]") }
+
+func bjRenderHand(hand Hand) string {
+	parts := make([]string, len(hand))
+	for i, c := range hand {
+		parts[i] = bjRenderCard(c)
+	}
+	return strings.Join(parts, " ")
+}
+
+func bjPad(s string, width int) string {
+	vis := lipgloss.Width(s)
+	if vis >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-vis)
+}
+
+func bjCenter(s string, width int) string {
+	vis := lipgloss.Width(s)
+	if vis >= width {
+		return s
+	}
+	l := (width - vis) / 2
+	return strings.Repeat(" ", l) + s + strings.Repeat(" ", width-vis-l)
+}
+
+func (b *Blackjack) Render() string {
+	revealed := b.phase == phaseDealerTurn || b.phase == phaseResults
+	brd := func(s string) string { return bjBorderSty.Render(s) }
+	row := func(content string) string {
+		return brd("║") + bjPad(content, bjInnerWidth) + brd("║\n")
+	}
+	blank := func() string { return row("") }
+
+	var sb strings.Builder
+	sb.WriteString(brd("╔" + strings.Repeat("═", bjInnerWidth) + "╗\n"))
+	sb.WriteString(row(bjCenter(bjTitleSty.Render("BLACKJACK"), bjInnerWidth)))
+	sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
+
+	// Dealer
+	var dealerCards string
+	if revealed {
+		dealerCards = bjRenderHand(b.dealer)
+	} else if len(b.dealer) > 0 {
+		dealerCards = bjRenderCard(b.dealer[0])
+		for range b.dealer[1:] {
+			dealerCards += " " + bjRenderHidden()
+		}
+	}
+	dealerVal := ""
+	if len(b.dealer) > 0 {
+		if revealed {
+			dealerVal = bjLabelSty.Render(fmt.Sprintf(" (%d)", b.dealer.Value()))
+		} else {
+			dealerVal = bjLabelSty.Render(fmt.Sprintf(" (%d+?)", b.dealer[0].BaseValue()))
+		}
+	}
+	sb.WriteString(row(" " + bjTextSty.Render("DEALER") + "  " + dealerCards + dealerVal))
+
+	// AI players
+	if len(b.players) > 1 {
+		sb.WriteString(brd("╠" + strings.Repeat("─", bjInnerWidth) + "╣\n"))
+		for i := 1; i < len(b.players); i++ {
+			active := b.phase == phaseAITurn && b.aiIdx == i
+			sb.WriteString(row(b.renderPlayerRow(b.players[i], active)))
+		}
+	}
+
+	sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
+	sb.WriteString(row(b.renderPlayerRow(b.players[0], b.phase == phasePlayerTurn)))
+	sb.WriteString(blank())
+
+	switch b.phase {
+	case phasePlayerTurn:
+		actions := "  " + bjHotSty.Render(" H-Hit ") + "   " + bjActionSty.Render(" S-Stand ")
+		sb.WriteString(row(actions))
+	case phaseResults:
+		sb.WriteString(row("  " + bjPushSty.Render("Press ENTER for next round")))
+	default:
+		sb.WriteString(blank())
+	}
+
+	sb.WriteString(blank())
+	sb.WriteString(row("  " + bjLabelSty.Render(fmt.Sprintf("Wins: %d   Rounds: %d", b.wins, b.rounds))))
+	sb.WriteString(brd("╚" + strings.Repeat("═", bjInnerWidth) + "╝"))
+	return sb.String()
+}
+
+func (b *Blackjack) renderPlayerRow(p *tablePlayer, active bool) string {
+	nameSty := bjTextSty
+	if active {
+		nameSty = bjActiveSty
+	}
+	name := nameSty.Render(fmt.Sprintf("%-5s", p.name))
+	cards := bjRenderHand(p.hand)
+	val := bjLabelSty.Render(fmt.Sprintf(" (%d)", p.hand.Value()))
+
+	statusStr := ""
+	switch p.status {
+	case statusBust:
+		statusStr = "  " + bjBustSty.Render("BUST")
+	case statusStand:
+		statusStr = "  " + bjLabelSty.Render("STAND")
+	case statusBlackjack:
+		statusStr = "  " + bjBJSty.Render("BLACKJACK!")
+	}
+	switch p.result {
+	case "WIN":
+		statusStr += "  " + bjWinSty.Render("WIN")
+	case "LOSE":
+		statusStr += "  " + bjLoseSty.Render("LOSE")
+	case "PUSH":
+		statusStr += "  " + bjPushSty.Render("PUSH")
+	}
+	return " " + name + "  " + cards + val + statusStr
+}
