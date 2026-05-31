@@ -14,7 +14,7 @@ const (
 	WinScore           = 5
 	PaddleMargin       = 0.05
 	InitialBallSpeed   = 0.008
-	PaddleSpeed        = 0.12
+	PaddleSpeed        = 0.02
 	SpeedIncreaseRate  = 1.1
 	MaxSpeedMultiplier = 2.0
 	MaxPaddleHits      = 10
