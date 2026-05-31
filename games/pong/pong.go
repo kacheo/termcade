@@ -83,6 +83,20 @@ func (p *Pong) clampPaddleY(y float64) float64 {
 	return y
 }
 
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func sign(x float64) float64 {
+	if x < 0 {
+		return -1
+	}
+	return 1
+}
+
 func (p *Pong) Update(delta time.Duration) error {
 	if p.GameOver || p.Paused {
 		return nil
@@ -115,29 +129,41 @@ func (p *Pong) Update(delta time.Duration) error {
 		p.BallVY = -p.BallVY
 	}
 
-	if p.BallX <= PaddleMargin && p.BallVX < 0 {
-		if p.BallY >= p.PlayerY-PaddleMargin && p.BallY <= p.PlayerY+PaddleMargin {
-			p.BallVX = -p.BallVX
-			p.BallY += (p.BallY - p.PlayerY) * 0.5
-			if p.SpeedIncrease && p.ballHitCount < MaxPaddleHits {
-				maxSpeed := InitialBallSpeed * MaxSpeedMultiplier
-				p.BallVX *= SpeedIncreaseRate
-				p.BallVY *= SpeedIncreaseRate
-				if p.BallVX > maxSpeed {
-					p.BallVX = maxSpeed
+	if p.BallVX < 0 {
+		t := (PaddleMargin - p.BallX) / p.BallVX
+		if t >= 0 && t <= 1 {
+			crossY := p.BallY + p.BallVY*t
+			if crossY >= p.PlayerY-PaddleMargin && crossY <= p.PlayerY+PaddleMargin {
+				p.BallX = PaddleMargin
+				p.BallY = crossY
+				p.BallVX = -p.BallVX
+				p.BallVY = (crossY - p.PlayerY) * 0.5
+				if p.SpeedIncrease && p.ballHitCount < MaxPaddleHits {
+					maxSpeed := InitialBallSpeed * MaxSpeedMultiplier
+					p.BallVX *= SpeedIncreaseRate
+					p.BallVY *= SpeedIncreaseRate
+					if abs(p.BallVX) > maxSpeed {
+						p.BallVX = sign(p.BallVX) * maxSpeed
+					}
+					if abs(p.BallVY) > maxSpeed {
+						p.BallVY = sign(p.BallVY) * maxSpeed
+					}
+					p.ballHitCount++
 				}
-				if p.BallVY > maxSpeed {
-					p.BallVY = maxSpeed
-				}
-				p.ballHitCount++
 			}
 		}
 	}
 
-	if p.BallX >= 1-PaddleMargin && p.BallVX > 0 {
-		if p.BallY >= p.AiY-PaddleMargin && p.BallY <= p.AiY+PaddleMargin {
-			p.BallVX = -p.BallVX
-			p.BallY += (p.BallY - p.AiY) * 0.5
+	if p.BallVX > 0 {
+		t := (1 - PaddleMargin - p.BallX) / p.BallVX
+		if t >= 0 && t <= 1 {
+			crossY := p.BallY + p.BallVY*t
+			if crossY >= p.AiY-PaddleMargin && crossY <= p.AiY+PaddleMargin {
+				p.BallX = 1 - PaddleMargin
+				p.BallY = crossY
+				p.BallVX = -p.BallVX
+				p.BallVY = (crossY - p.AiY) * 0.5
+			}
 		}
 	}
 
