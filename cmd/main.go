@@ -205,40 +205,35 @@ func (m *model) updateSnakeOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateSudokuOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Easy", "Medium", "Hard", "", "Back"}
+	// 3 items matching renderSudokuOptions: 0=Difficulty, 1=Start Game, 2=Back
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
 		}
 	case "down", "j":
-		if m.selected < len(items)-1 {
+		if m.selected < 2 {
 			m.selected++
+		}
+	case "left", "h":
+		if m.selected == 0 {
+			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 2) % 3
+		}
+	case "right", "l":
+		if m.selected == 0 {
+			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 1) % 3
 		}
 	case "enter", " ":
 		switch m.selected {
 		case 0:
-			m.sudokuOpts.difficulty = sudoku.DifficultyEasy
-			m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty)
-			m.activeGame = gameKindSudoku
-			m.currentMenu = menuPlaying
-			m.gameOver = false
-			m.selected = 0
+			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 1) % 3
 		case 1:
-			m.sudokuOpts.difficulty = sudoku.DifficultyMedium
 			m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty)
 			m.activeGame = gameKindSudoku
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
 		case 2:
-			m.sudokuOpts.difficulty = sudoku.DifficultyHard
-			m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty)
-			m.activeGame = gameKindSudoku
-			m.currentMenu = menuPlaying
-			m.gameOver = false
-			m.selected = 0
-		case 4:
 			m.currentMenu = menuMain
 			m.selected = 0
 		}
@@ -262,7 +257,10 @@ func (m *model) restartGame() {
 
 func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "esc":
+	case "q":
+		m.currentMenu = menuMain
+		m.game = nil
+	case "esc":
 		if s, ok := m.game.(*sudoku.Sudoku); ok {
 			if s.QuitRequested() {
 				s.ClearQuitRequest()
@@ -270,9 +268,10 @@ func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.game = nil
 				return m, nil
 			}
+			s.HandleInput("esc")
+			return m, nil
 		}
-		m.currentMenu = menuMain
-		m.game = nil
+		m.game.HandleInput("esc")
 	case "p":
 		m.currentMenu = menuPause
 		m.selected = 0
@@ -519,7 +518,7 @@ func (m *model) renderSudokuOptions() string {
 
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
-	sb.WriteString("    ↑↓ Select   Enter Start   Q Quit\n")
+	sb.WriteString("    ←→ Change   ↑↓ Select   Enter Confirm   Q Back\n")
 	return sb.String()
 }
 

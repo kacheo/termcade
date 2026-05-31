@@ -67,6 +67,10 @@ func (s *Sudoku) Update(delta time.Duration) error {
 }
 
 func (s *Sudoku) HandleInput(key string) {
+	if s.quitRequested && key != "esc" {
+		s.quitRequested = false
+		return
+	}
 	switch key {
 	case "left":
 		if s.cursorCol > 0 {
@@ -169,12 +173,10 @@ func (s *Sudoku) setDigit(digit int) {
 		return
 	}
 	newValue := digit + 1
-	if cell.value != 0 && newValue == cell.value {
+	if newValue == cell.value {
 		return
 	}
-	if cell.value != 0 {
-		s.pushUndo(s.cursorRow, s.cursorCol)
-	}
+	s.pushUndo(s.cursorRow, s.cursorCol)
 	cell.value = newValue
 	s.updateConflicts()
 	if s.board.IsComplete() {
@@ -197,10 +199,6 @@ func (s *Sudoku) checkWin() {
 				return
 			}
 		}
-	}
-	testBoard := *s.board
-	if solved, _ := Solve(&testBoard); !solved {
-		return
 	}
 	s.isGameOver = true
 	s.won = true
@@ -262,6 +260,9 @@ func (s *Sudoku) Render() string {
 		mode = "Pencil"
 	}
 	b.WriteString(fmt.Sprintf("  Mode: [%s]   [↑↓←→] Move  [1-9] Enter  [Space] Pencil  [U] Undo  [P] Pause\n", mode))
+	if s.quitRequested {
+		b.WriteString("  *** Press Esc again to quit, or any other key to cancel ***\n")
+	}
 	return b.String()
 }
 

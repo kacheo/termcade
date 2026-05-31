@@ -67,11 +67,15 @@ found:
 	}
 	initialLen := len(game.undoStack)
 	game.HandleInput("5")
-	if len(game.undoStack) != initialLen {
-		t.Errorf("undo stack should NOT grow on first digit entry (only on change), got %d", len(game.undoStack))
+	if len(game.undoStack) != initialLen+1 {
+		t.Errorf("undo stack should grow when entering first digit, got stack len %d want %d", len(game.undoStack), initialLen+1)
 	}
 	if game.board.cells[game.cursorRow][game.cursorCol].value != 5 {
 		t.Error("cell should have value 5")
+	}
+	game.HandleInput("u")
+	if game.board.cells[game.cursorRow][game.cursorCol].value != 0 {
+		t.Error("undo should restore empty cell after first digit entry")
 	}
 }
 

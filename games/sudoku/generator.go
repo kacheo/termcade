@@ -36,8 +36,7 @@ func Generate(diff Difficulty) *Board {
 	board := NewBoard()
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fillBoard(&board, r)
-	clues := difficultyClues[diff]
-	removeClues(&board, clues)
+	removeClues(&board, difficultyClues[diff], r)
 	return &board
 }
 
@@ -45,40 +44,39 @@ func fillBoard(board *Board, r *rand.Rand) {
 	solveRecursive(board, 0, 0, r)
 }
 
-func removeClues(board *Board, targetClues int) {
+func removeClues(board *Board, targetClues int, r *rand.Rand) {
 	cells := make([][2]int, 81)
 	idx := 0
-	for r := 0; r < 9; r++ {
-		for c := 0; c < 9; c++ {
-			cells[idx] = [2]int{r, c}
+	for row := 0; row < 9; row++ {
+		for col := 0; col < 9; col++ {
+			cells[idx] = [2]int{row, col}
 			idx++
 		}
 	}
-	shuffle(cells)
+	shuffleWith(cells, r)
 	removed := 0
 	for _, cell := range cells {
 		if removed >= 81-targetClues {
 			break
 		}
-		r, c := cell[0], cell[1]
-		if board.cells[r][c].value == 0 {
+		row, col := cell[0], cell[1]
+		if board.cells[row][col].value == 0 {
 			continue
 		}
-		board.cells[r][c].value = 0
-		board.cells[r][c].given = false
+		board.cells[row][col].value = 0
+		board.cells[row][col].given = false
 		removed++
 	}
-	for r := 0; r < 9; r++ {
-		for c := 0; c < 9; c++ {
-			if board.cells[r][c].value != 0 {
-				board.cells[r][c].given = true
+	for row := 0; row < 9; row++ {
+		for col := 0; col < 9; col++ {
+			if board.cells[row][col].value != 0 {
+				board.cells[row][col].given = true
 			}
 		}
 	}
 }
 
-func shuffle(cells [][2]int) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func shuffleWith(cells [][2]int, r *rand.Rand) {
 	for i := len(cells) - 1; i > 0; i-- {
 		j := r.Intn(i + 1)
 		cells[i], cells[j] = cells[j], cells[i]
