@@ -99,8 +99,7 @@ func TestUpdateMainMenu_NavigateUp_AtZero(t *testing.T) {
 
 func TestUpdateMainMenu_NavigateBoundary(t *testing.T) {
 	m := newModel()
-	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
-	// Drive to last item
+	items := []string{"Play Tetris", "Play Pong", "", "Quit"}
 	for i := 0; i < len(items)*2; i++ {
 		m.updateMainMenu(tea.KeyMsg{Type: tea.KeyDown})
 	}
@@ -237,6 +236,111 @@ func TestUpdateTetrisOptions_Navigation(t *testing.T) {
 		t.Errorf("down: got %d, want 1", m.selected)
 	}
 	m.updateTetrisOptions(tea.KeyMsg{Type: tea.KeyUp})
+	if m.selected != 0 {
+		t.Errorf("up: got %d, want 0", m.selected)
+	}
+}
+
+// ---- updatePongOptions ------------------------------------------------------
+
+func TestUpdatePongOptions_SpeedToggle(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPongOptions
+	m.selected = 0
+
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyRight})
+	if !m.pongOpts.speedIncrease {
+		t.Error("right on speed should set speedIncrease=true")
+	}
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyLeft})
+	if m.pongOpts.speedIncrease {
+		t.Error("left on speed should set speedIncrease=false")
+	}
+}
+
+func TestUpdatePongOptions_AIDifficultyIncrement(t *testing.T) {
+	m := newModel()
+	m.selected = 1
+	m.pongOpts.aiDifficulty = 1
+
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyRight})
+	if m.pongOpts.aiDifficulty != 2 {
+		t.Errorf("right on difficulty: got %d, want 2", m.pongOpts.aiDifficulty)
+	}
+}
+
+func TestUpdatePongOptions_AIDifficultyDecrement(t *testing.T) {
+	m := newModel()
+	m.selected = 1
+	m.pongOpts.aiDifficulty = 1
+
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyLeft})
+	if m.pongOpts.aiDifficulty != 0 {
+		t.Errorf("left on difficulty: got %d, want 0", m.pongOpts.aiDifficulty)
+	}
+}
+
+func TestUpdatePongOptions_AIDifficultyLowerBound(t *testing.T) {
+	m := newModel()
+	m.selected = 1
+	m.pongOpts.aiDifficulty = 0
+
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyLeft})
+	if m.pongOpts.aiDifficulty != 0 {
+		t.Errorf("difficulty should not go below 0, got %d", m.pongOpts.aiDifficulty)
+	}
+}
+
+func TestUpdatePongOptions_AIDifficultyUpperBound(t *testing.T) {
+	m := newModel()
+	m.selected = 1
+	m.pongOpts.aiDifficulty = 2
+
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyRight})
+	if m.pongOpts.aiDifficulty != 2 {
+		t.Errorf("difficulty should not exceed 2, got %d", m.pongOpts.aiDifficulty)
+	}
+}
+
+func TestUpdatePongOptions_StartGame(t *testing.T) {
+	m := newModel()
+	m.selected = 2
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyEnter})
+	if m.currentMenu != menuPlaying {
+		t.Errorf("Start Game: got menu %v, want menuPlaying", m.currentMenu)
+	}
+	if m.game == nil {
+		t.Error("Start Game should create a game")
+	}
+}
+
+func TestUpdatePongOptions_Back(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPongOptions
+	m.selected = 3
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyEnter})
+	if m.currentMenu != menuMain {
+		t.Errorf("Back: got menu %v, want menuMain", m.currentMenu)
+	}
+}
+
+func TestUpdatePongOptions_QBack(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPongOptions
+	m.updatePongOptions(keyMsg("q"))
+	if m.currentMenu != menuMain {
+		t.Errorf("q in options: got menu %v, want menuMain", m.currentMenu)
+	}
+}
+
+func TestUpdatePongOptions_Navigation(t *testing.T) {
+	m := newModel()
+	m.selected = 0
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyDown})
+	if m.selected != 1 {
+		t.Errorf("down: got %d, want 1", m.selected)
+	}
+	m.updatePongOptions(tea.KeyMsg{Type: tea.KeyUp})
 	if m.selected != 0 {
 		t.Errorf("up: got %d, want 0", m.selected)
 	}
