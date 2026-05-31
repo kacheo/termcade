@@ -63,6 +63,11 @@ func TestInitialDeal(t *testing.T) {
 
 func TestPhase_DealingToAITurn(t *testing.T) {
 	g := NewBlackjack(2)
+	// Pre-assign non-blackjack hands to ensure AIs are still statusPlaying
+	g.players[1].hand = Hand{{Ten, Spades}, {Six, Hearts}}   // 16, not BJ
+	g.players[1].status = statusPlaying
+	g.players[2].hand = Hand{{Nine, Clubs}, {Seven, Diamonds}} // 16, not BJ
+	g.players[2].status = statusPlaying
 	g.Update(dealDelay + time.Millisecond)
 	if g.phase != phaseAITurn {
 		t.Errorf("expected phaseAITurn, got %v", g.phase)

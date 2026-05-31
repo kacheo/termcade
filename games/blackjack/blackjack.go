@@ -161,7 +161,9 @@ func (b *Blackjack) stepAI() {
 			ai.status = statusBust
 			b.aiIdx++
 			b.skipDoneAIs()
+			return
 		}
+		// Non-bust hit: AI gets another tick to decide again
 	} else {
 		ai.status = statusStand
 		b.aiIdx++
