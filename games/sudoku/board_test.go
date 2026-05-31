@@ -48,3 +48,30 @@ func TestGetCandidates(t *testing.T) {
         t.Error("5 should not be a candidate at [1][1] (box elimination)")
     }
 }
+
+func TestHasConflict(t *testing.T) {
+    board := NewBoard()
+    board.cells[0][0].value = 5
+    board.cells[0][1].value = 5
+    if !board.HasConflict(0, 1) {
+        t.Error("expected conflict at [0][1] due to duplicate in row")
+    }
+}
+
+func TestClearCell(t *testing.T) {
+    board := NewBoard()
+    board.cells[0][0].value = 5
+    board.cells[0][0].given = true
+    board.ClearCell(0, 0)
+    if board.cells[0][0].value != 5 {
+        t.Error("given cell should not be cleared")
+    }
+}
+
+func TestSetValue(t *testing.T) {
+    board := NewBoard()
+    board.SetValue(0, 0, 5, false)
+    if board.cells[0][0].value != 5 {
+        t.Error("expected value 5")
+    }
+}

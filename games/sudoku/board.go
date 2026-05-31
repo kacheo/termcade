@@ -51,3 +51,46 @@ func (b *Board) GetCandidates(row, col int) [9]bool {
     }
     return candidates
 }
+
+func (b *Board) HasConflict(row, col int) bool {
+    val := b.cells[row][col].value
+    if val == 0 {
+        return false
+    }
+    for c := 0; c < 9; c++ {
+        if c != col && b.cells[row][c].value == val {
+            return true
+        }
+    }
+    for r := 0; r < 9; r++ {
+        if r != row && b.cells[r][col].value == val {
+            return true
+        }
+    }
+    boxRow := (row / 3) * 3
+    boxCol := (col / 3) * 3
+    for r := boxRow; r < boxRow+3; r++ {
+        for c := boxCol; c < boxCol+3; c++ {
+            if (r != row || c != col) && b.cells[r][c].value == val {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+func (b *Board) ClearCell(row, col int) {
+    if b.cells[row][col].given {
+        return
+    }
+    b.cells[row][col].value = 0
+    b.cells[row][col].conflict = false
+    for i := 0; i < 9; i++ {
+        b.cells[row][col].pencilMarks[i] = false
+    }
+}
+
+func (b *Board) SetValue(row, col, val int, given bool) {
+    b.cells[row][col].value = val
+    b.cells[row][col].given = given
+}
