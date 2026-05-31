@@ -18,8 +18,3 @@ type Game interface {
 type Position struct {
 	X, Y int
 }
-
-type Config struct {
-	Ghost      bool
-	StartLevel int
-}

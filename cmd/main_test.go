@@ -123,7 +123,7 @@ func TestUpdateMainMenu_SelectTetris(t *testing.T) {
 
 func TestUpdateMainMenu_Quit(t *testing.T) {
 	m := newModel()
-	m.selected = 4
+	m.selected = 3
 	_, cmd := m.updateMainMenu(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd == nil {
 		t.Error("selecting Quit should return a non-nil tea.Cmd")
