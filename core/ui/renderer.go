@@ -3,21 +3,25 @@ package ui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	ColorCyan   = lipgloss.Color("#00FFFF")
-	ColorYellow = lipgloss.Color("#FFFF00")
-	ColorPurple = lipgloss.Color("#800080")
-	ColorGreen  = lipgloss.Color("#00FF00")
-	ColorRed    = lipgloss.Color("#FF0000")
-	ColorBlue   = lipgloss.Color("#0000FF")
-	ColorOrange = lipgloss.Color("#FF8000")
-	ColorGray   = lipgloss.Color("#333333")
-	ColorDim    = lipgloss.Color("#1A1A1A")
-	ColorBg     = lipgloss.Color("#0D0D0D")
-	ColorText   = lipgloss.Color("#CCCCCC")
-	ColorBorder = lipgloss.Color("#666666")
+	ColorCyan    = lipgloss.Color("#00FFFF")
+	ColorYellow  = lipgloss.Color("#FFFF00")
+	ColorPurple  = lipgloss.Color("#800080")
+	ColorGreen   = lipgloss.Color("#00FF00")
+	ColorRed     = lipgloss.Color("#FF0000")
+	ColorBlue    = lipgloss.Color("#0000FF")
+	ColorOrange  = lipgloss.Color("#FF8000")
+	ColorGray    = lipgloss.Color("#333333")
+	ColorDim     = lipgloss.Color("#1A1A1A")
+	ColorBg      = lipgloss.Color("#0D0D0D")
+	ColorText    = lipgloss.Color("#CCCCCC")
+	ColorBorder  = lipgloss.Color("#666666")
+	ColorAccent  = lipgloss.Color("#00D4AA") // teal/mint for section labels
+	ColorEmphasis = lipgloss.Color("#F5F5F5") // near-white for stat values
+	ColorSubtle  = lipgloss.Color("#4A4A4A") // lighter gray for empty grid cells
+	ColorDimText = lipgloss.Color("#888888") // medium gray for secondary text
 
-	BlockStyle = lipgloss.Style{}
-	EmptyStyle = lipgloss.NewStyle().Foreground(ColorGray)
+	BlockStyle  = lipgloss.Style{}
+	EmptyStyle  = lipgloss.NewStyle().Foreground(ColorGray)
 	BorderStyle = lipgloss.NewStyle().Foreground(ColorBorder)
 )
 
