@@ -78,6 +78,7 @@ func (s *Snake) spawnFood() {
 	for _, p := range s.body {
 		occupied[[2]int{p.X, p.Y}] = true
 	}
+	// Fast path: random sampling
 	for range 100 {
 		p := core.Position{
 			X: s.rng.Intn(BoardWidth),
@@ -88,6 +89,17 @@ func (s *Snake) spawnFood() {
 			return
 		}
 	}
+	// Slow path: exhaustive scan when board is nearly full
+	for y := range BoardHeight {
+		for x := range BoardWidth {
+			if !occupied[[2]int{x, y}] {
+				s.food = core.Position{X: x, Y: y}
+				return
+			}
+		}
+	}
+	// Board completely full — player wins
+	s.gameOver = true
 }
 
 func (s *Snake) tickInterval_for(level int) time.Duration {
@@ -127,14 +139,21 @@ func (s *Snake) step() {
 		return
 	}
 
-	for _, p := range s.body {
+	eating := newHead == s.food
+
+	// When not eating, the tail vacates its cell this step — exclude it from collision.
+	checkBody := s.body
+	if !eating {
+		checkBody = s.body[:len(s.body)-1]
+	}
+	for _, p := range checkBody {
 		if p == newHead {
 			s.gameOver = true
 			return
 		}
 	}
 
-	if newHead == s.food {
+	if eating {
 		s.body = append([]core.Position{newHead}, s.body...)
 		s.foodEaten++
 		s.score += 10 * s.GetLevel()
@@ -155,8 +174,6 @@ func (s *Snake) HandleInput(key string) {
 		s.nextDir = dirLeft
 	case "right":
 		s.nextDir = dirRight
-	case "p":
-		s.paused = !s.paused
 	case "q":
 		s.gameOver = true
 	}
@@ -178,13 +195,13 @@ func (s *Snake) GetLevel() int {
 }
 
 var (
-	headColor  = lipgloss.Color("#00FF00")
-	bodyColor  = lipgloss.Color("#00AA00")
-	foodColor  = lipgloss.Color("#FF4444")
-	emptyColor = lipgloss.Color("#333333")
-	borderColor = lipgloss.Color("#666666")
-	textColor  = lipgloss.Color("#CCCCCC")
-	labelColor = lipgloss.Color("#888888")
+	borderSty = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	headSty   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00"))
+	bodySty   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00AA00"))
+	foodSty   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+	emptySty  = lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+	textSty   = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	labelSty  = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
 )
 
 func (s *Snake) Render() string {
@@ -193,14 +210,6 @@ func (s *Snake) Render() string {
 		bodySet[[2]int{p.X, p.Y}] = true
 	}
 	head := s.body[0]
-
-	borderSty := lipgloss.NewStyle().Foreground(borderColor)
-	headSty := lipgloss.NewStyle().Foreground(headColor)
-	bodySty := lipgloss.NewStyle().Foreground(bodyColor)
-	foodSty := lipgloss.NewStyle().Foreground(foodColor)
-	emptySty := lipgloss.NewStyle().Foreground(emptyColor)
-	textSty := lipgloss.NewStyle().Foreground(textColor)
-	labelSty := lipgloss.NewStyle().Foreground(labelColor)
 
 	boardLines := make([]string, 0, BoardHeight+2)
 	topBorder := borderSty.Render("╔" + strings.Repeat("═", BoardWidth*2) + "╗")

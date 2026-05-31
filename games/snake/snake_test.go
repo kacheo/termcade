@@ -138,13 +138,14 @@ func TestSnakeWallCollision_Bottom(t *testing.T) {
 
 func TestSnakeSelfCollision(t *testing.T) {
 	s := NewSnake()
-	// Build a U-shape that the head will loop into:
-	// Head at (5,5) going right, body wraps around
+	// Head at (5,5) going right; body wraps so (6,5) is a middle segment (not the tail).
+	// newHead = (6,5) which is in body[:4] → game over.
 	s.body = []core.Position{
 		{X: 5, Y: 5}, // head
 		{X: 5, Y: 6},
 		{X: 6, Y: 6},
-		{X: 6, Y: 5}, // next right step lands here
+		{X: 6, Y: 5}, // next right step lands here — NOT the tail
+		{X: 7, Y: 5}, // tail
 	}
 	s.dir = dirRight
 	s.nextDir = dirRight
@@ -153,7 +154,7 @@ func TestSnakeSelfCollision(t *testing.T) {
 	s.Update(s.tickInterval)
 
 	if !s.IsGameOver() {
-		t.Error("expected game over on self collision")
+		t.Error("expected game over when head enters a non-tail body segment")
 	}
 }
 
@@ -242,9 +243,10 @@ func TestSnakePause(t *testing.T) {
 	s.food = core.Position{X: -1, Y: -1}
 	origHead := s.body[0]
 
-	s.HandleInput("p")
+	// Pause is managed externally by the menu; set s.paused directly.
+	s.paused = true
 	if !s.IsPaused() {
-		t.Error("expected paused after 'p'")
+		t.Error("expected IsPaused() true when s.paused is set")
 	}
 
 	s.Update(s.tickInterval * 5)
@@ -252,9 +254,9 @@ func TestSnakePause(t *testing.T) {
 		t.Error("snake moved while paused")
 	}
 
-	s.HandleInput("p")
+	s.paused = false
 	if s.IsPaused() {
-		t.Error("expected unpaused after second 'p'")
+		t.Error("expected IsPaused() false after clearing s.paused")
 	}
 }
 
@@ -371,5 +373,57 @@ func TestSnakeTickIntervalFor(t *testing.T) {
 		if got != want {
 			t.Errorf("tickInterval_for(%d) = %v, want %v", tt.level, got, want)
 		}
+	}
+}
+
+func TestSnakeSpawnFoodFullBoard(t *testing.T) {
+	s := NewSnake()
+	// Fill the entire board with body segments
+	body := make([]core.Position, 0, BoardWidth*BoardHeight)
+	for y := range BoardHeight {
+		for x := range BoardWidth {
+			body = append(body, core.Position{X: x, Y: y})
+		}
+	}
+	s.body = body
+	s.gameOver = false
+
+	s.spawnFood()
+
+	if !s.IsGameOver() {
+		t.Error("expected game over when board is completely full")
+	}
+}
+
+func TestSnakeTailChase(t *testing.T) {
+	s := NewSnake()
+	// Snake going right: head at (5,5), body extends left.
+	// Tail is at (3,5). newHead moving right would be (6,5) — not the tail.
+	// Instead, set direction left and place tail one step ahead of head.
+	// Head at (5,5) going up, body going down: tail at (5,8).
+	// Move up: newHead = (5,4) — not the tail. Let's use a simpler shape:
+	// Head at (5,5), body: (5,5),(5,6),(5,7). Direction = right.
+	// Tail = (5,7). newHead = (6,5) — not tail. Hard to chase right tail.
+	//
+	// Classic tail-chase: head going right, then turn down, then left toward tail.
+	// Simpler: set up body so head's next step == current tail position.
+	// Head (3,5) going right, body: (3,5),(2,5),(2,6),(3,6),(4,6),(4,5) — tail at (4,5).
+	// newHead = (4,5) == tail. Without the fix, game over. With fix, not game over.
+	s.body = []core.Position{
+		{X: 3, Y: 5}, // head
+		{X: 2, Y: 5},
+		{X: 2, Y: 6},
+		{X: 3, Y: 6},
+		{X: 4, Y: 6},
+		{X: 4, Y: 5}, // tail — will vacate this step
+	}
+	s.dir = dirRight
+	s.nextDir = dirRight
+	s.food = core.Position{X: 0, Y: 0} // food far away, not eating
+
+	s.Update(s.tickInterval)
+
+	if s.IsGameOver() {
+		t.Error("chasing the tail should not cause game over (tail vacates its cell)")
 	}
 }
