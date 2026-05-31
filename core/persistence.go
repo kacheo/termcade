@@ -29,11 +29,27 @@ func defaultConfig() Config {
 }
 
 func LoadConfig() (Config, error) {
-	config := defaultConfig()
 	path, err := configPath()
 	if err != nil {
-		return config, err
+		return Config{}, err
 	}
+	return loadConfigFromPath(path)
+}
+
+func saveConfigToPath(cfg Config, path string) error {
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
+}
+
+func loadConfigFromPath(path string) (Config, error) {
+	config := defaultConfig()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return config, nil
@@ -50,23 +66,19 @@ func LoadConfig() (Config, error) {
 	return config, nil
 }
 
-func SaveConfig(cfg Config) error {
-	path, err := configPath()
+func saveScoresToPath(scores []ScoreEntry, path string) error {
+	data, err := json.MarshalIndent(scores, "", "  ")
 	if err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(path, data, 0o644)
 }
 
-func LoadScores() ([]ScoreEntry, error) {
-	path, err := scoresPath()
-	if err != nil {
-		return nil, err
-	}
+func loadScoresFromPath(path string) ([]ScoreEntry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return []ScoreEntry{}, nil
@@ -78,16 +90,28 @@ func LoadScores() ([]ScoreEntry, error) {
 	return scores, nil
 }
 
+func SaveConfig(cfg Config) error {
+	path, err := configPath()
+	if err != nil {
+		return err
+	}
+	return saveConfigToPath(cfg, path)
+}
+
+func LoadScores() ([]ScoreEntry, error) {
+	path, err := scoresPath()
+	if err != nil {
+		return nil, err
+	}
+	return loadScoresFromPath(path)
+}
+
 func SaveScores(scores []ScoreEntry) error {
 	path, err := scoresPath()
 	if err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(scores, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0o644)
+	return saveScoresToPath(scores, path)
 }
 
 func InsertScore(scores []ScoreEntry, entry ScoreEntry) []ScoreEntry {
