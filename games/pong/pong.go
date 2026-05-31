@@ -204,8 +204,14 @@ func (p *Pong) HandleInput(key string) {
 	}
 	switch key {
 	case "up", "k":
+		if p.PlayerVY > 0 {
+			p.PlayerVY = 0
+		}
 		p.PlayerVY = -PaddleSpeed
 	case "down", "j":
+		if p.PlayerVY < 0 {
+			p.PlayerVY = 0
+		}
 		p.PlayerVY = PaddleSpeed
 	case "p":
 		p.Paused = !p.Paused
