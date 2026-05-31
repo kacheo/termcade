@@ -413,14 +413,23 @@ func (m *model) renderSudokuOptions() string {
 	sb.WriteString(diffStr + "\n")
 
 	sb.WriteString("  ║                                       ║\n")
-	if m.selected == 1 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+	if m.selected == 0 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Easy"))
 	} else {
-		sb.WriteString("  ║    Start Game                        ║\n")
+		sb.WriteString("  ║    Easy                              ║\n")
+	}
+	if m.selected == 1 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Medium"))
+	} else {
+		sb.WriteString("  ║    Medium                            ║\n")
 	}
 	if m.selected == 2 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
-	} else if m.selected == 3 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Hard"))
+	} else {
+		sb.WriteString("  ║    Hard                              ║\n")
+	}
+	sb.WriteString("  ║                                       ║\n")
+	if m.selected == 4 {
 		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
 	} else {
 		sb.WriteString("  ║    Back                             ║\n")
