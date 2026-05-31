@@ -15,91 +15,91 @@ const (
 )
 
 type Pong struct {
-	playerY      float64
-	aiY         float64
-	ballX       float64
-	ballY       float64
-	ballVX      float64
-	ballVY      float64
-	playerScore int
-	aiScore     int
-	paused      bool
-	gameOver    bool
-	winner      string
-	speedIncrease bool
-	aiDifficulty  int // 0=Easy, 1=Medium, 2=Hard
+	PlayerY      float64
+	AiY          float64
+	BallX        float64
+	BallY        float64
+	BallVX       float64
+	BallVY       float64
+	PlayerScore  int
+	AiScore      int
+	Paused       bool
+	GameOver     bool
+	Winner       string
+	SpeedIncrease bool
+	AiDifficulty  int // 0=Easy, 1=Medium, 2=Hard
 }
 
 func NewPong(speedIncrease bool, aiDifficulty int) *Pong {
 	p := &Pong{
-		playerY:        0.5,
-		aiY:            0.5,
-		ballX:          0.5,
-		ballY:          0.5,
-		speedIncrease:  speedIncrease,
-		aiDifficulty:  aiDifficulty,
+		PlayerY:        0.5,
+		AiY:            0.5,
+		BallX:          0.5,
+		BallY:          0.5,
+		SpeedIncrease:  speedIncrease,
+		AiDifficulty:   aiDifficulty,
 	}
 	p.resetBall(1) // 1 = right direction
 	return p
 }
 
 func (p *Pong) resetBall(direction int) {
-	p.ballX = 0.5
-	p.ballY = 0.5 + (rand.Float64() - 0.5) * 0.3
+	p.BallX = 0.5
+	p.BallY = 0.5 + (rand.Float64() - 0.5) * 0.3
 	speed := 0.02
-	p.ballVX = float64(direction) * speed
-	p.ballVY = (rand.Float64() - 0.5) * speed
+	p.BallVX = float64(direction) * speed
+	p.BallVY = (rand.Float64() - 0.5) * speed
 }
 
 func (p *Pong) Update(delta time.Duration) error {
-	if p.gameOver || p.paused {
+	if p.GameOver || p.Paused {
 		return nil
 	}
 
-	p.ballX += p.ballVX
-	p.ballY += p.ballVY
+	p.BallX += p.BallVX
+	p.BallY += p.BallVY
 
-	if p.ballY <= 0 {
-		p.ballY = 0
-		p.ballVY = -p.ballVY
+	if p.BallY <= 0 {
+		p.BallY = 0
+		p.BallVY = -p.BallVY
 	}
-	if p.ballY >= 1 {
-		p.ballY = 1
-		p.ballVY = -p.ballVY
+	if p.BallY >= 1 {
+		p.BallY = 1
+		p.BallVY = -p.BallVY
 	}
 
-	if p.ballX <= 0.05 && p.ballVX < 0 {
-		if p.ballY >= p.playerY-0.05 && p.ballY <= p.playerY+0.05 {
-			p.ballVX = -p.ballVX
-			p.ballY += (p.ballY - p.playerY) * 0.5
-			if p.speedIncrease {
-				p.ballVX *= 1.1
-				p.ballVY *= 1.1
+	if p.BallX <= 0.05 && p.BallVX < 0 {
+		if p.BallY >= p.PlayerY-0.05 && p.BallY <= p.PlayerY+0.05 {
+			p.BallVX = -p.BallVX
+			p.BallY += (p.BallY - p.PlayerY) * 0.5
+			if p.SpeedIncrease {
+				p.BallVX *= 1.1
+				p.BallVY *= 1.1
 			}
 		}
 	}
 
-	if p.ballX >= 0.95 && p.ballVX > 0 {
-		if p.ballY >= p.aiY-0.05 && p.ballY <= p.aiY+0.05 {
-			p.ballVX = -p.ballVX
-			p.ballY += (p.ballY - p.aiY) * 0.5
+	if p.BallX >= 0.95 && p.BallVX > 0 {
+		if p.BallY >= p.AiY-0.05 && p.BallY <= p.AiY+0.05 {
+			p.BallVX = -p.BallVX
+			p.BallY += (p.BallY - p.AiY) * 0.5
 		}
 	}
 
-	if p.ballX < 0 {
-		p.aiScore++
-		if p.aiScore >= WinScore {
-			p.gameOver = true
-			p.winner = "AI"
+	if p.BallX < 0 {
+		p.AiScore++
+		if p.AiScore >= WinScore {
+			p.GameOver = true
+			p.Winner = "AI"
 		} else {
 			p.resetBall(1)
 		}
 	}
-	if p.ballX > 1 {
-		p.playerScore++
-		if p.playerScore >= WinScore {
-			p.gameOver = true
-			p.winner = "Player"
+	if p.BallX > 1 {
+		p.PlayerScore++
+		if p.PlayerScore >= WinScore {
+			p.GameOver = true
+			p.Winner = "Player"
 		} else {
 			p.resetBall(-1)
 		}
@@ -111,14 +111,14 @@ func (p *Pong) Update(delta time.Duration) error {
 }
 
 func (p *Pong) updateAI() {
-	if p.gameOver || p.paused {
+	if p.GameOver || p.Paused {
 		return
 	}
 
 	var reactionSpeed float64
 	var accuracy float64
 
-	switch p.aiDifficulty {
+	switch p.AiDifficulty {
 	case 0:
 		reactionSpeed = 0.01
 		accuracy = 0.6
@@ -130,61 +130,61 @@ func (p *Pong) updateAI() {
 		accuracy = 0.95
 	}
 
-	targetY := p.ballY
-	if p.ballVX < 0 {
+	targetY := p.BallY
+	if p.BallVX < 0 {
 		targetY = 0.5
 	}
 
-	diff := targetY - p.aiY
+	diff := targetY - p.AiY
 	if diff > reactionSpeed {
-		p.aiY += reactionSpeed
+		p.AiY += reactionSpeed
 	} else if diff < -reactionSpeed {
-		p.aiY -= reactionSpeed
+		p.AiY -= reactionSpeed
 	}
 
 	if rand.Float64() > accuracy {
-		p.aiY += (rand.Float64() - 0.5) * 0.02
+		p.AiY += (rand.Float64() - 0.5) * 0.02
 	}
 
 	halfPaddle := float64(PaddleHeight) / float64(FieldHeight) / 2
-	if p.aiY < halfPaddle {
-		p.aiY = halfPaddle
+	if p.AiY < halfPaddle {
+		p.AiY = halfPaddle
 	}
-	if p.aiY > 1-halfPaddle {
-		p.aiY = 1 - halfPaddle
+	if p.AiY > 1-halfPaddle {
+		p.AiY = 1 - halfPaddle
 	}
 }
 
 func (p *Pong) Name() string        { return "Pong" }
 func (p *Pong) Description() string  { return "Classic paddle game" }
-func (p *Pong) IsPaused() bool       { return p.paused }
-func (p *Pong) IsGameOver() bool     { return p.gameOver }
-func (p *Pong) GetScore() int        { return p.playerScore }
-func (p *Pong) GetLevel() int       { return p.aiDifficulty }
-func (p *Pong) GetLines() int        { return p.aiScore }
+func (p *Pong) IsPaused() bool       { return p.Paused }
+func (p *Pong) IsGameOver() bool     { return p.GameOver }
+func (p *Pong) GetScore() int        { return p.PlayerScore }
+func (p *Pong) GetLevel() int       { return p.AiDifficulty }
+func (p *Pong) GetLines() int        { return p.AiScore }
 
 func (p *Pong) HandleInput(key string) {
-	if p.gameOver {
+	if p.GameOver {
 		return
 	}
 	switch key {
 	case "up", "k":
-		p.playerY -= 0.05
+		p.PlayerY -= 0.05
 	case "down", "j":
-		p.playerY += 0.05
+		p.PlayerY += 0.05
 	case "p":
-		p.paused = !p.paused
+		p.Paused = !p.Paused
 	case "q":
-		p.gameOver = true
-		p.winner = "AI"
+		p.GameOver = true
+		p.Winner = "AI"
 	}
 
 	halfPaddle := float64(PaddleHeight) / float64(FieldHeight) / 2
-	if p.playerY < halfPaddle {
-		p.playerY = halfPaddle
+	if p.PlayerY < halfPaddle {
+		p.PlayerY = halfPaddle
 	}
-	if p.playerY > 1-halfPaddle {
-		p.playerY = 1 - halfPaddle
+	if p.PlayerY > 1-halfPaddle {
+		p.PlayerY = 1 - halfPaddle
 	}
 }
 
@@ -204,23 +204,23 @@ func (p *Pong) Render() string {
 			char := " "
 
 			if x == 2 {
-				paddleTop := p.playerY - float64(PaddleHeight)/float64(FieldHeight)/2
-				paddleBottom := p.playerY + float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleTop := p.PlayerY - float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleBottom := p.PlayerY + float64(PaddleHeight)/float64(FieldHeight)/2
 				if rowY >= paddleTop && rowY <= paddleBottom {
 					char = "█"
 				}
 			}
 
 			if x == FieldWidth-3 {
-				paddleTop := p.aiY - float64(PaddleHeight)/float64(FieldHeight)/2
-				paddleBottom := p.aiY + float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleTop := p.AiY - float64(PaddleHeight)/float64(FieldHeight)/2
+				paddleBottom := p.AiY + float64(PaddleHeight)/float64(FieldHeight)/2
 				if rowY >= paddleTop && rowY <= paddleBottom {
 					char = "█"
 				}
 			}
 
-			ballX := int(p.ballX * float64(FieldWidth))
-			if ballX == x && int(p.ballY*float64(FieldHeight)) == y {
+			ballX := int(p.BallX * float64(FieldWidth))
+			if ballX == x && int(p.BallY*float64(FieldHeight)) == y {
 				char = "●"
 			}
 
@@ -234,7 +234,7 @@ func (p *Pong) Render() string {
 	}
 
 	sb.WriteString("  ╠════════════════════════════════════════╣\n")
-	sb.WriteString(fmt.Sprintf("║  Player: %d          AI: %d              ║\n", p.playerScore, p.aiScore))
+	sb.WriteString(fmt.Sprintf("║  Player: %d          AI: %d              ║\n", p.PlayerScore, p.AiScore))
 	sb.WriteString("  ╚════════════════════════════════════════╝\n")
 
 	sb.WriteString("    [↑/↓] Move   [P] Pause   [Q] Quit\n")
