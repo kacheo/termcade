@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"tmvgs/core"
+	"tmvgs/games/pong"
 	"tmvgs/games/tetris"
 )
 
@@ -21,6 +22,7 @@ type menuState int
 const (
 	menuMain menuState = iota
 	menuTetrisOptions
+	menuPongOptions
 	menuPlaying
 	menuPause
 	menuGameOver
@@ -35,6 +37,10 @@ type model struct {
 	tetrisOpts  struct {
 		ghost      bool
 		startLevel int
+	}
+	pongOpts struct {
+		speedIncrease bool
+		aiDifficulty  int
 	}
 }
 
@@ -66,6 +72,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateMainMenu(msg)
 		case menuTetrisOptions:
 			return m.updateTetrisOptions(msg)
+		case menuPongOptions:
+			return m.updatePongOptions(msg)
 		case menuPlaying:
 			return m.updateGame(msg)
 		case menuPause:
@@ -78,7 +86,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Pong", "", "Quit"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
@@ -93,7 +101,10 @@ func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 0:
 			m.currentMenu = menuTetrisOptions
 			m.selected = 0
-		case 4:
+		case 1:
+			m.currentMenu = menuPongOptions
+			m.selected = 0
+		case 3:
 			return m, tea.Quit
 		}
 	}
@@ -129,6 +140,49 @@ func (m *model) updateTetrisOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		if m.selected == 2 {
 			m.game = tetris.NewTetris(m.tetrisOpts.ghost, m.tetrisOpts.startLevel)
+			m.currentMenu = menuPlaying
+			m.gameOver = false
+			m.selected = 0
+		} else if m.selected == 3 {
+			m.currentMenu = menuMain
+			m.selected = 0
+		}
+	case "q":
+		m.currentMenu = menuMain
+		m.selected = 0
+	}
+	return m, nil
+}
+
+func (m *model) updatePongOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "left", "h":
+		if m.selected == 0 {
+			m.pongOpts.speedIncrease = false
+		} else if m.selected == 1 {
+			if m.pongOpts.aiDifficulty > 0 {
+				m.pongOpts.aiDifficulty--
+			}
+		}
+	case "right", "l":
+		if m.selected == 0 {
+			m.pongOpts.speedIncrease = true
+		} else if m.selected == 1 {
+			if m.pongOpts.aiDifficulty < 2 {
+				m.pongOpts.aiDifficulty++
+			}
+		}
+	case "up", "k":
+		if m.selected > 0 {
+			m.selected--
+		}
+	case "down", "j":
+		if m.selected < 3 {
+			m.selected++
+		}
+	case "enter", " ":
+		if m.selected == 2 {
+			m.game = pong.NewPong(m.pongOpts.speedIncrease, m.pongOpts.aiDifficulty)
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
@@ -247,6 +301,8 @@ func (m *model) View() string {
 		return m.renderMainMenu()
 	case menuTetrisOptions:
 		return m.renderTetrisOptions()
+	case menuPongOptions:
+		return m.renderPongOptions()
 	case menuPlaying:
 		return m.renderGame()
 	case menuPause:
@@ -258,7 +314,7 @@ func (m *model) View() string {
 }
 
 func (m *model) renderMainMenu() string {
-	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Pong", "", "Quit"}
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
@@ -307,6 +363,51 @@ func (m *model) renderTetrisOptions() string {
 	}
 	sb.WriteString(ghostStr + "\n")
 	sb.WriteString(levelStr + "\n")
+
+	sb.WriteString("  ║                                       ║\n")
+	if m.selected == 2 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+	} else {
+		sb.WriteString("  ║    Start Game                        ║\n")
+	}
+	if m.selected == 3 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+	} else {
+		sb.WriteString("  ║    Back                             ║\n")
+	}
+
+	sb.WriteString("  ║                                       ║\n")
+	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
+	sb.WriteString("    ←→ Change   ↑↓ Select   Enter Start\n")
+	return sb.String()
+}
+
+func (m *model) renderPongOptions() string {
+	speedText := "OFF"
+	if m.pongOpts.speedIncrease {
+		speedText = "ON "
+	}
+	difficulty := []string{"Easy", "Medium", "Hard"}
+
+	var sb strings.Builder
+	sb.WriteString("\n")
+	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+	sb.WriteString("  ║          Pong — Options              ║\n")
+	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+	sb.WriteString("  ║                                       ║\n")
+
+	speedStr := fmt.Sprintf("  ║   Speed Increase   [ %s ]  ◀ ▶      ║", speedText)
+	diffStr := fmt.Sprintf("  ║   AI Difficulty    [ %s ]  ◀ ▶     ║", difficulty[m.pongOpts.aiDifficulty])
+
+	if m.selected == 0 {
+		speedStr = "  ║  ▶ Speed Increase   [ " + speedText + " ]  ◀ ▶      ║"
+		speedStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(speedStr)
+	} else if m.selected == 1 {
+		diffStr = "  ║  ▶ AI Difficulty    [ " + difficulty[m.pongOpts.aiDifficulty] + " ]  ◀ ▶     ║"
+		diffStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(diffStr)
+	}
+	sb.WriteString(speedStr + "\n")
+	sb.WriteString(diffStr + "\n")
 
 	sb.WriteString("  ║                                       ║\n")
 	if m.selected == 2 {
@@ -389,6 +490,10 @@ func main() {
 			ghost      bool
 			startLevel int
 		}{ghost: false, startLevel: 0},
+		pongOpts: struct {
+			speedIncrease bool
+			aiDifficulty  int
+		}{speedIncrease: false, aiDifficulty: 1},
 	})
 	if err := p.Start(); err != nil {
 		fmt.Printf("Error starting program: %v\n", err)
