@@ -6,6 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"tmvgs/games/sudoku"
+	"tmvgs/games/tetris"
 )
 
 // ---- MockGame ---------------------------------------------------------------
@@ -46,6 +48,9 @@ func newModel() *model {
 			ghost      bool
 			startLevel int
 		}{ghost: false, startLevel: 0},
+		sudokuOpts: struct {
+			difficulty sudoku.Difficulty
+		}{},
 	}
 }
 
@@ -99,7 +104,7 @@ func TestUpdateMainMenu_NavigateUp_AtZero(t *testing.T) {
 
 func TestUpdateMainMenu_NavigateBoundary(t *testing.T) {
 	m := newModel()
-	items := []string{"Play Tetris", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Sudoku", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
 	// Drive to last item
 	for i := 0; i < len(items)*2; i++ {
 		m.updateMainMenu(tea.KeyMsg{Type: tea.KeyDown})
@@ -123,7 +128,7 @@ func TestUpdateMainMenu_SelectTetris(t *testing.T) {
 
 func TestUpdateMainMenu_Quit(t *testing.T) {
 	m := newModel()
-	m.selected = 4
+	m.selected = 5
 	_, cmd := m.updateMainMenu(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd == nil {
 		t.Error("selecting Quit should return a non-nil tea.Cmd")
@@ -308,6 +313,7 @@ func TestUpdatePauseMenu_Resume(t *testing.T) {
 func TestUpdatePauseMenu_Restart(t *testing.T) {
 	m := newModel()
 	m.currentMenu = menuPause
+	m.game = &tetris.Tetris{}
 	m.selected = 1
 	m.updatePauseMenu(tea.KeyMsg{Type: tea.KeyEnter})
 	if m.currentMenu != menuPlaying {
@@ -355,6 +361,7 @@ func TestUpdatePauseMenu_Navigation(t *testing.T) {
 func TestUpdateGameOverMenu_PlayAgain(t *testing.T) {
 	m := newModel()
 	m.currentMenu = menuGameOver
+	m.game = &tetris.Tetris{}
 	m.selected = 0
 	m.updateGameOverMenu(tea.KeyMsg{Type: tea.KeyEnter})
 	if m.currentMenu != menuPlaying {

@@ -197,7 +197,15 @@ func (m *model) updateSudokuOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q":
+	case "q", "esc":
+		if s, ok := m.game.(*sudoku.Sudoku); ok {
+			if s.QuitRequested() {
+				s.ClearQuitRequest()
+				m.currentMenu = menuMain
+				m.game = nil
+				return m, nil
+			}
+		}
 		m.currentMenu = menuMain
 		m.game = nil
 	case "p":
@@ -471,13 +479,33 @@ func (m *model) renderPauseMenu() string {
 func (m *model) renderGameOverMenu() string {
 	items := []string{"Play Again", "Main Menu"}
 	var sb strings.Builder
-	sb.WriteString("\n")
-	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
-	sb.WriteString("  ║            Game Over!                 ║\n")
-	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
-	sb.WriteString("  ║                                       ║\n")
 
-	if m.game != nil {
+	if m.game == nil {
+		sb.WriteString("\n")
+		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+		sb.WriteString("  ║            Game Over!                 ║\n")
+		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+		sb.WriteString("  ║                                       ║\n")
+	} else if s, ok := m.game.(*sudoku.Sudoku); ok {
+		title := "Game Over!"
+		if s.Won() {
+			title = "   You Win!  "
+		}
+		sb.WriteString("\n")
+		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+		sb.WriteString(fmt.Sprintf("  ║%37s║\n", title))
+		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+		sb.WriteString("  ║                                       ║\n")
+		minutes := int(s.GetElapsed().Seconds()) / 60
+		seconds := int(s.GetElapsed().Seconds()) % 60
+		sb.WriteString(fmt.Sprintf("  ║   Time: %02d:%02d                         ║\n", minutes, seconds))
+		sb.WriteString(fmt.Sprintf("  ║   Difficulty: %-19s║\n", m.sudokuOpts.difficulty.String()))
+	} else {
+		sb.WriteString("\n")
+		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+		sb.WriteString("  ║            Game Over!                 ║\n")
+		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+		sb.WriteString("  ║                                       ║\n")
 		sb.WriteString(fmt.Sprintf("  ║   Final Score: %-5d                 ║\n", m.game.GetScore()))
 		sb.WriteString(fmt.Sprintf("  ║   Level Reached: %-3d                ║\n", m.game.GetLevel()))
 		sb.WriteString(fmt.Sprintf("  ║   Lines Cleared: %-3d                ║\n", m.game.GetLines()))

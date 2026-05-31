@@ -1,5 +1,10 @@
 package sudoku
 
+import (
+	"math/rand"
+	"time"
+)
+
 type Difficulty int
 
 const (
@@ -12,6 +17,19 @@ var difficultyClues = map[Difficulty]int{
 	DifficultyEasy:   40,
 	DifficultyMedium:  32,
 	DifficultyHard:    28,
+}
+
+func (d Difficulty) String() string {
+	switch d {
+	case DifficultyEasy:
+		return "Easy"
+	case DifficultyMedium:
+		return "Medium"
+	case DifficultyHard:
+		return "Hard"
+	default:
+		return "Unknown"
+	}
 }
 
 func Generate(diff Difficulty) *Board {
@@ -58,41 +76,10 @@ func removeClues(board *Board, targetClues int) {
 	}
 }
 
-func countSolutions(board *Board) int {
-	count := 0
-	countRecursive(board, &count, 0, 0)
-	return count
-}
-
-func countRecursive(board *Board, count *int, row, col int) {
-	if *count > 1 {
-		return
-	}
-	if row == 9 {
-		*count++
-		return
-	}
-	if col == 9 {
-		countRecursive(board, count, row+1, 0)
-		return
-	}
-	if board.cells[row][col].value != 0 {
-		countRecursive(board, count, row, col+1)
-		return
-	}
-	candidates := board.GetCandidates(row, col)
-	for i := 0; i < 9; i++ {
-		if candidates[i] {
-			board.cells[row][col].value = i + 1
-			countRecursive(board, count, row, col+1)
-			board.cells[row][col].value = 0
-		}
-	}
-}
-
 func shuffle(cells [][2]int) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := len(cells) - 1; i > 0; i-- {
-		j := (i*i*17 + i*7) % (i + 1)
+		j := r.Intn(i + 1)
 		cells[i], cells[j] = cells[j], cells[i]
 	}
 }
