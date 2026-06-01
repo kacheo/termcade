@@ -96,6 +96,22 @@ func (b *Board) ClearCell(row, col int) {
     }
 }
 
+func (b *Board) IsDigitComplete(digit int) bool {
+	count := 0
+	for r := 0; r < 9; r++ {
+		for c := 0; c < 9; c++ {
+			cell := &b.cells[r][c]
+			if cell.value == digit {
+				if cell.conflict {
+					return false
+				}
+				count++
+			}
+		}
+	}
+	return count == 9
+}
+
 func (b *Board) SetValue(row, col, val int, given bool) {
 	if row < 0 || row >= 9 || col < 0 || col >= 9 {
 		return

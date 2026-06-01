@@ -50,7 +50,8 @@ type model struct {
 		startLevel int
 	}
 	sudokuOpts struct {
-		difficulty sudoku.Difficulty
+		difficulty   sudoku.Difficulty
+		highlightIdx int
 	}
 }
 
@@ -205,35 +206,44 @@ func (m *model) updateSnakeOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateSudokuOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// 3 items matching renderSudokuOptions: 0=Difficulty, 1=Start Game, 2=Back
+	// 4 items: 0=Difficulty, 1=Highlight, 2=Start Game, 3=Back
+	n := len(sudoku.HighlightOptions)
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
 		}
 	case "down", "j":
-		if m.selected < 2 {
+		if m.selected < 3 {
 			m.selected++
 		}
 	case "left", "h":
 		if m.selected == 0 {
 			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 2) % 3
 		}
+		if m.selected == 1 {
+			m.sudokuOpts.highlightIdx = (m.sudokuOpts.highlightIdx + n - 1) % n
+		}
 	case "right", "l":
 		if m.selected == 0 {
 			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 1) % 3
+		}
+		if m.selected == 1 {
+			m.sudokuOpts.highlightIdx = (m.sudokuOpts.highlightIdx + 1) % n
 		}
 	case "enter", " ":
 		switch m.selected {
 		case 0:
 			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 1) % 3
 		case 1:
-			m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty)
+			m.sudokuOpts.highlightIdx = (m.sudokuOpts.highlightIdx + 1) % n
+		case 2:
+			m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
 			m.activeGame = gameKindSudoku
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
-		case 2:
+		case 3:
 			m.currentMenu = menuMain
 			m.selected = 0
 		}
@@ -251,7 +261,7 @@ func (m *model) restartGame() {
 	case gameKindSnake:
 		m.game = snake.NewSnake()
 	case gameKindSudoku:
-		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty)
+		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
 	}
 }
 
@@ -489,6 +499,7 @@ func (m *model) renderSudokuOptions() string {
 	case sudoku.DifficultyHard:
 		difficultyText = "Hard"
 	}
+	highlightText := sudoku.HighlightOptions[m.sudokuOpts.highlightIdx].Name
 
 	var sb strings.Builder
 	sb.WriteString("\n")
@@ -497,20 +508,29 @@ func (m *model) renderSudokuOptions() string {
 	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 	sb.WriteString("  ║                                       ║\n")
 
+	hlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
+
 	diffStr := fmt.Sprintf("  ║   Difficulty    [ %-8s ]            ║", difficultyText)
 	if m.selected == 0 {
-		diffStr = "  ║  ▶ Difficulty    [ " + difficultyText + " ]            ║"
-		diffStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(diffStr)
+		diffStr = fmt.Sprintf("  ║  ▶ Difficulty    [ %-8s ]            ║", difficultyText)
+		diffStr = hlStyle.Render(diffStr)
 	}
 	sb.WriteString(diffStr + "\n")
 
-	sb.WriteString("  ║                                       ║\n")
+	tintStr := fmt.Sprintf("  ║   Highlight     [ %-8s ]            ║", highlightText)
 	if m.selected == 1 {
+		tintStr = fmt.Sprintf("  ║  ▶ Highlight     [ %-8s ]            ║", highlightText)
+		tintStr = hlStyle.Render(tintStr)
+	}
+	sb.WriteString(tintStr + "\n")
+
+	sb.WriteString("  ║                                       ║\n")
+	if m.selected == 2 {
 		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
 	} else {
 		sb.WriteString("  ║    Start Game                        ║\n")
 	}
-	if m.selected == 2 {
+	if m.selected == 3 {
 		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
 	} else {
 		sb.WriteString("  ║    Back                             ║\n")

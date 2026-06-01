@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewSudoku(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	if game.Name() != "Sudoku" {
 		t.Errorf("expected name Sudoku, got %s", game.Name())
 	}
@@ -17,7 +17,7 @@ func TestNewSudoku(t *testing.T) {
 }
 
 func TestCursorMovement(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	game.HandleInput("right")
 	if game.cursorCol != 1 {
 		t.Error("cursor should move right")
@@ -29,7 +29,7 @@ func TestCursorMovement(t *testing.T) {
 }
 
 func TestPencilMode(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	if game.pencilMode {
 		t.Error("pencil mode should be false initially")
 	}
@@ -40,7 +40,7 @@ func TestPencilMode(t *testing.T) {
 }
 
 func TestRender(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	output := game.Render()
 	if len(output) == 0 {
 		t.Error("render should return non-empty string")
@@ -51,7 +51,7 @@ func TestRender(t *testing.T) {
 }
 
 func TestSetDigitUndoFirstEntry(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	for r := 0; r < 9; r++ {
 		for c := 0; c < 9; c++ {
 			if !game.board.cells[r][c].given && game.board.cells[r][c].value == 0 {
@@ -80,7 +80,7 @@ found:
 }
 
 func TestSetDigitNoUndoSameValue(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	for r := 0; r < 9; r++ {
 		for c := 0; c < 9; c++ {
 			if !game.board.cells[r][c].given && game.board.cells[r][c].value == 0 {
@@ -100,7 +100,7 @@ found:
 }
 
 func TestUndoStackLimit(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	for r := 0; r < 9; r++ {
 		for c := 0; c < 9; c++ {
 			game.board.cells[r][c].given = false
@@ -118,7 +118,7 @@ func TestUndoStackLimit(t *testing.T) {
 }
 
 func TestTimerPaused(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	game.startTime = time.Now().Add(-10 * time.Second)
 	game.Update(0)
 	elapsedBeforePause := game.elapsed
@@ -132,7 +132,7 @@ func TestTimerPaused(t *testing.T) {
 }
 
 func TestPencilMarksRender(t *testing.T) {
-	game := NewSudoku(DifficultyEasy)
+	game := NewSudoku(DifficultyEasy, 4)
 	for r := 0; r < 9; r++ {
 		for c := 0; c < 9; c++ {
 			if !game.board.cells[r][c].given && game.board.cells[r][c].value == 0 {

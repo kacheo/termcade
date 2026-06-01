@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"tmvgs/core/ui"
-
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -35,15 +33,36 @@ type Sudoku struct {
 	undoStack      []Move
 	pausedAt       time.Time
 	totalPaused    time.Duration
+	highlightBg    lipgloss.Style
+	matchHighlight bool
 }
 
-func NewSudoku(diff Difficulty) *Sudoku {
+type HighlightOption struct {
+	Name  string
+	Color lipgloss.Color
+}
+
+var HighlightOptions = []HighlightOption{
+	{"Blue",  lipgloss.Color("#3A3A5A")},
+	{"Green", lipgloss.Color("#1A4A2A")},
+	{"Red",   lipgloss.Color("#4A2020")},
+	{"Gray",  lipgloss.Color("#3A3A3A")},
+	{"None",  lipgloss.Color("")},
+}
+
+func NewSudoku(diff Difficulty, highlightIdx int) *Sudoku {
+	var hl lipgloss.Style
+	if opt := HighlightOptions[highlightIdx]; opt.Color != "" {
+		hl = lipgloss.NewStyle().Background(opt.Color)
+	}
 	return &Sudoku{
-		board:      Generate(diff),
-		difficulty: diff,
-		startTime:  time.Now(),
-		score:      10000,
-		undoStack:  make([]Move, 0),
+		board:          Generate(diff),
+		difficulty:     diff,
+		startTime:      time.Now(),
+		score:          10000,
+		undoStack:      make([]Move, 0),
+		highlightBg:    hl,
+		matchHighlight: true,
 	}
 }
 
@@ -105,6 +124,8 @@ func (s *Sudoku) HandleInput(key string) {
 		}
 	case "u":
 		s.undo()
+	case "h":
+		s.matchHighlight = !s.matchHighlight
 	case "esc":
 		s.quitRequested = true
 	}
@@ -223,10 +244,24 @@ func (s *Sudoku) Resume() {
 var gridStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FFFFFF"))
 
+var digitColors = [9]lipgloss.Color{
+	"#5599FF", // 1 — sky blue
+	"#FFCC44", // 2 — amber
+	"#CC66FF", // 3 — lavender
+	"#44CC88", // 4 — mint
+	"#FF7766", // 5 — coral
+	"#44AAFF", // 6 — azure
+	"#FF9944", // 7 — orange
+	"#88CC44", // 8 — lime
+	"#FF66AA", // 9 — rose
+}
+
 var (
-	cursorStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#333333"))
-	pencilMarkStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	givenStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
+	cursorStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#333333"))
+	pencilMarkStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	givenStyle          = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
+	completedColor      = lipgloss.Color("#5A5A5A")
+	matchHighlightBg    = lipgloss.NewStyle().Background(lipgloss.Color("#3A3300"))
 )
 
 func (s *Sudoku) Render() string {
@@ -237,6 +272,12 @@ func (s *Sudoku) Render() string {
 	b.WriteString(gridStyle.Render(fmt.Sprintf("  SUDOKU    Time: %02d:%02d   Score: %d",
 		minutes, seconds, s.score)))
 	b.WriteString("\n")
+	var completedDigits [9]bool
+	for d := 1; d <= 9; d++ {
+		completedDigits[d-1] = s.board.IsDigitComplete(d)
+	}
+	cursorDigit := s.board.cells[s.cursorRow][s.cursorCol].value
+
 	b.WriteString("  ╔══════════════════════════════╗\n")
 	for r := 0; r < 9; r++ {
 		if r == 3 || r == 6 {
@@ -249,7 +290,10 @@ func (s *Sudoku) Render() string {
 			}
 			cell := &s.board.cells[r][c]
 			isCursor := r == s.cursorRow && c == s.cursorCol
-			s.renderCell(&b, cell, isCursor)
+			isHighlighted := !isCursor && (r == s.cursorRow || c == s.cursorCol)
+			isMatchingDigit := s.matchHighlight && cursorDigit != 0 && cell.value == cursorDigit && !isCursor
+			isComplete := cell.value != 0 && completedDigits[cell.value-1]
+			s.renderCell(&b, cell, isCursor, isHighlighted, isMatchingDigit, isComplete)
 			b.WriteString(" ")
 		}
 		b.WriteString("║\n")
@@ -259,39 +303,50 @@ func (s *Sudoku) Render() string {
 	if s.pencilMode {
 		mode = "Pencil"
 	}
-	b.WriteString(fmt.Sprintf("  Mode: [%s]   [↑↓←→] Move  [1-9] Enter  [Space] Pencil  [U] Undo  [P] Pause\n", mode))
+	b.WriteString(fmt.Sprintf("  Mode: [%s]   [↑↓←→] Move  [1-9] Enter  [Space] Pencil  [U] Undo  [P] Pause  [H] Match\n", mode))
 	if s.quitRequested {
 		b.WriteString("  *** Press Esc again to quit, or any other key to cancel ***\n")
 	}
 	return b.String()
 }
 
-func (s *Sudoku) renderCell(b *strings.Builder, cell *Cell, isCursor bool) {
+func (s *Sudoku) renderCell(b *strings.Builder, cell *Cell, isCursor, isHighlighted, isMatchingDigit, isComplete bool) {
 	if cell.value == 0 {
 		if s.hasPencilMarks(cell) {
-			s.renderPencilMarks(b, cell, isCursor)
+			s.renderPencilMarks(b, cell, isCursor, isHighlighted)
 		} else {
 			if isCursor {
 				b.WriteString(cursorStyle.Render("  "))
+			} else if isHighlighted {
+				b.WriteString(s.highlightBg.Render(" ·"))
 			} else {
 				b.WriteString(" ·")
 			}
 		}
 	} else {
-		color := ui.GetPieceColor(byte('1' + cell.value - 1))
+		color := digitColors[cell.value-1]
 		if cell.conflict {
 			color = lipgloss.Color("196")
+		} else if isComplete {
+			color = completedColor
 		}
-		if cell.given {
-			content := givenStyle.Render(fmt.Sprintf("%2d", cell.value))
-			if isCursor {
-				b.WriteString(cursorStyle.Render(fmt.Sprintf("%2d", cell.value)))
+		if isCursor {
+			b.WriteString(cursorStyle.Render(fmt.Sprintf("%2d", cell.value)))
+		} else if isMatchingDigit {
+			if cell.given {
+				b.WriteString(matchHighlightBg.Copy().Foreground(lipgloss.Color("#FFFFFF")).Bold(true).Render(fmt.Sprintf("%2d", cell.value)))
 			} else {
-				b.WriteString(content)
+				b.WriteString(matchHighlightBg.Copy().Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
+			}
+		} else if isHighlighted {
+			if cell.given {
+				b.WriteString(s.highlightBg.Copy().Foreground(lipgloss.Color("#FFFFFF")).Bold(true).Render(fmt.Sprintf("%2d", cell.value)))
+			} else {
+				b.WriteString(s.highlightBg.Copy().Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
 			}
 		} else {
-			if isCursor {
-				b.WriteString(cursorStyle.Render(fmt.Sprintf("%2d", cell.value)))
+			if cell.given {
+				b.WriteString(givenStyle.Render(fmt.Sprintf("%2d", cell.value)))
 			} else {
 				b.WriteString(lipgloss.NewStyle().Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
 			}
@@ -299,7 +354,7 @@ func (s *Sudoku) renderCell(b *strings.Builder, cell *Cell, isCursor bool) {
 	}
 }
 
-func (s *Sudoku) renderPencilMarks(b *strings.Builder, cell *Cell, isCursor bool) {
+func (s *Sudoku) renderPencilMarks(b *strings.Builder, cell *Cell, isCursor bool, isHighlighted bool) {
 	marks := make([]string, 0)
 	for i := 0; i < 9; i++ {
 		if cell.pencilMarks[i] {
@@ -318,6 +373,8 @@ func (s *Sudoku) renderPencilMarks(b *strings.Builder, cell *Cell, isCursor bool
 		} else {
 			b.WriteString(bgStyle.Render(content))
 		}
+	} else if isHighlighted {
+		b.WriteString(s.highlightBg.Copy().Foreground(lipgloss.Color("#888888")).Render(fmt.Sprintf("%-2s", content)))
 	} else {
 		b.WriteString(pencilMarkStyle.Render(fmt.Sprintf("%-2s", content)))
 	}
