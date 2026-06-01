@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewBlackjack_Metadata(t *testing.T) {
-	g := NewBlackjack(2)
+	g := NewBlackjack()
 	if g.Name() != "Blackjack" {
 		t.Errorf("Name() = %q, want Blackjack", g.Name())
 	}
@@ -28,83 +28,47 @@ func TestNewBlackjack_Metadata(t *testing.T) {
 	}
 }
 
-func TestNewBlackjack_Players(t *testing.T) {
-	cases := []struct{ ai, total int }{{0, 1}, {1, 2}, {3, 4}, {4, 4}}
-	for _, c := range cases {
-		g := NewBlackjack(c.ai)
-		if len(g.players) != c.total {
-			t.Errorf("aiCount=%d: players=%d, want %d", c.ai, len(g.players), c.total)
-		}
-	}
-	g := NewBlackjack(3)
-	if g.players[0].isAI {
-		t.Error("players[0] should be human")
-	}
-	for i := 1; i <= 3; i++ {
-		if !g.players[i].isAI {
-			t.Errorf("players[%d] should be AI", i)
-		}
-	}
-}
-
 func TestInitialDeal(t *testing.T) {
-	g := NewBlackjack(2)
+	g := NewBlackjack()
 	if len(g.dealer) != 2 {
 		t.Errorf("dealer cards = %d, want 2", len(g.dealer))
 	}
-	for i, p := range g.players {
-		if len(p.hand) != 2 {
-			t.Errorf("player[%d] cards = %d, want 2", i, len(p.hand))
-		}
+	if len(g.player.hand) != 2 {
+		t.Errorf("player cards = %d, want 2", len(g.player.hand))
 	}
 	if g.phase != phaseDealing {
 		t.Errorf("initial phase = %v, want phaseDealing", g.phase)
 	}
 }
 
-func TestPhase_DealingToAITurn(t *testing.T) {
-	g := NewBlackjack(2)
-	// Pre-assign non-blackjack hands to ensure AIs are still statusPlaying
-	g.players[1].hand = Hand{{Ten, Spades}, {Six, Hearts}}   // 16, not BJ
-	g.players[1].status = statusPlaying
-	g.players[2].hand = Hand{{Nine, Clubs}, {Seven, Diamonds}} // 16, not BJ
-	g.players[2].status = statusPlaying
+func TestPhase_DealingToTurn(t *testing.T) {
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16, not BJ
+	g.player.status = statusPlaying
 	g.Update(dealDelay + time.Millisecond)
-	if g.phase != phaseAITurn {
-		t.Errorf("expected phaseAITurn, got %v", g.phase)
+	if g.phase != phaseTurn {
+		t.Errorf("expected phaseTurn, got %v", g.phase)
 	}
 }
 
-func TestPhase_DealingToPlayerTurn_NoAI(t *testing.T) {
-	g := NewBlackjack(0)
+func TestPhase_DealingToDealer_OnBlackjack(t *testing.T) {
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ace, Spades}, {King, Hearts}} // blackjack
+	g.player.status = statusBlackjack
 	g.Update(dealDelay + time.Millisecond)
-	if g.phase != phasePlayerTurn {
-		t.Errorf("expected phasePlayerTurn (no AI), got %v", g.phase)
-	}
-}
-
-func TestPhase_AIStandsAdvancesToPlayer(t *testing.T) {
-	g := NewBlackjack(1)
-	g.players[1].hand = Hand{{Ten, Spades}, {Seven, Hearts}} // hard 17 — AI will stand
-	g.players[1].status = statusPlaying                       // Ensure statusPlaying
-	g.Update(dealDelay + time.Millisecond)                    // → phaseAITurn
-	g.Update(aiStepDelay + time.Millisecond)                  // AI acts
-	if g.phase != phasePlayerTurn {
-		t.Errorf("after AI stands expected phasePlayerTurn, got %v", g.phase)
-	}
-	if g.players[1].status != statusStand {
-		t.Errorf("AI status = %v, want statusStand", g.players[1].status)
+	if g.phase != phaseDealerTurn {
+		t.Errorf("expected phaseDealerTurn on blackjack, got %v", g.phase)
 	}
 }
 
 func TestEvaluate_PlayerWinsVsBustedDealer(t *testing.T) {
-	g := NewBlackjack(0)
+	g := NewBlackjack()
 	g.dealer = Hand{{Ten, Spades}, {Six, Hearts}, {Seven, Clubs}} // 23
-	g.players[0].hand = Hand{{King, Spades}, {Eight, Hearts}}     // 18
-	g.players[0].status = statusStand
+	g.player.hand = Hand{{King, Spades}, {Eight, Hearts}}         // 18
+	g.player.status = statusStand
 	g.evaluateResults()
-	if g.players[0].result != "WIN" {
-		t.Errorf("result = %q, want WIN", g.players[0].result)
+	if g.player.result != "WIN" {
+		t.Errorf("result = %q, want WIN", g.player.result)
 	}
 	if g.wins != 1 {
 		t.Errorf("wins = %d, want 1", g.wins)
@@ -112,56 +76,58 @@ func TestEvaluate_PlayerWinsVsBustedDealer(t *testing.T) {
 }
 
 func TestEvaluate_DealerWins(t *testing.T) {
-	g := NewBlackjack(0)
-	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}            // 19
-	g.players[0].hand = Hand{{King, Spades}, {Eight, Hearts}} // 18
-	g.players[0].status = statusStand
+	g := NewBlackjack()
+	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}
+	g.player.hand = Hand{{King, Spades}, {Eight, Hearts}} // 18 vs 19
+	g.player.status = statusStand
 	g.evaluateResults()
-	if g.players[0].result != "LOSE" {
-		t.Errorf("result = %q, want LOSE", g.players[0].result)
+	if g.player.result != "LOSE" {
+		t.Errorf("result = %q, want LOSE", g.player.result)
 	}
 }
 
 func TestEvaluate_Push(t *testing.T) {
-	g := NewBlackjack(0)
-	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}           // 19
-	g.players[0].hand = Hand{{King, Spades}, {Nine, Clubs}}  // 19
-	g.players[0].status = statusStand
+	g := NewBlackjack()
+	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}
+	g.player.hand = Hand{{King, Spades}, {Nine, Clubs}} // 19 vs 19
+	g.player.status = statusStand
 	g.evaluateResults()
-	if g.players[0].result != "PUSH" {
-		t.Errorf("result = %q, want PUSH", g.players[0].result)
+	if g.player.result != "PUSH" {
+		t.Errorf("result = %q, want PUSH", g.player.result)
 	}
 }
 
 func TestEvaluate_BustLoses(t *testing.T) {
-	g := NewBlackjack(0)
-	g.players[0].hand = Hand{{Ten, Spades}, {Six, Hearts}, {Eight, Clubs}} // 24
-	g.players[0].status = statusBust
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}, {Eight, Clubs}} // 24
+	g.player.status = statusBust
 	g.evaluateResults()
-	if g.players[0].result != "LOSE" {
-		t.Errorf("result = %q, want LOSE", g.players[0].result)
+	if g.player.result != "LOSE" {
+		t.Errorf("result = %q, want LOSE", g.player.result)
 	}
 }
 
 func TestHandleInput_HitDrawsCard(t *testing.T) {
-	g := NewBlackjack(0)
-	g.Update(dealDelay + time.Millisecond) // → phasePlayerTurn
-	before := len(g.players[0].hand)
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16
+	g.player.status = statusPlaying
+	g.phase = phaseTurn
+	before := len(g.player.hand)
 	g.HandleInput("h")
-	if len(g.players[0].hand) != before+1 {
-		t.Errorf("hand size = %d, want %d", len(g.players[0].hand), before+1)
+	if len(g.player.hand) != before+1 {
+		t.Errorf("hand size = %d, want %d", len(g.player.hand), before+1)
 	}
 }
 
 func TestHandleInput_HitBust_GoesToDealer(t *testing.T) {
-	g := NewBlackjack(0)
-	g.Update(dealDelay + time.Millisecond)
-	g.players[0].hand = Hand{{Ten, Spades}, {Nine, Hearts}} // 19
-	g.players[0].status = statusPlaying                      // Ensure statusPlaying
-	g.deck = append(Deck{Card{Five, Clubs}}, g.deck...)     // 19+5=24, bust
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ten, Spades}, {Nine, Hearts}} // 19
+	g.player.status = statusPlaying
+	g.phase = phaseTurn
+	g.deck = append(Deck{Card{Five, Clubs}}, g.deck...) // 19+5=24, bust
 	g.HandleInput("h")
-	if g.players[0].status != statusBust {
-		t.Errorf("status = %v, want statusBust", g.players[0].status)
+	if g.player.status != statusBust {
+		t.Errorf("status = %v, want statusBust", g.player.status)
 	}
 	if g.phase != phaseDealerTurn {
 		t.Errorf("phase = %v, want phaseDealerTurn", g.phase)
@@ -169,14 +135,13 @@ func TestHandleInput_HitBust_GoesToDealer(t *testing.T) {
 }
 
 func TestHandleInput_Stand_GoesToDealer(t *testing.T) {
-	g := NewBlackjack(0)
-	g.Update(dealDelay + time.Millisecond)
-	// Ensure player is in statusPlaying (not blackjack)
-	g.players[0].hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16, not a blackjack
-	g.players[0].status = statusPlaying
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16
+	g.player.status = statusPlaying
+	g.phase = phaseTurn
 	g.HandleInput("s")
-	if g.players[0].status != statusStand {
-		t.Errorf("status = %v, want statusStand", g.players[0].status)
+	if g.player.status != statusStand {
+		t.Errorf("status = %v, want statusStand", g.player.status)
 	}
 	if g.phase != phaseDealerTurn {
 		t.Errorf("phase = %v, want phaseDealerTurn", g.phase)
@@ -184,7 +149,7 @@ func TestHandleInput_Stand_GoesToDealer(t *testing.T) {
 }
 
 func TestHandleInput_Enter_StartsNextRound(t *testing.T) {
-	g := NewBlackjack(0)
+	g := NewBlackjack()
 	g.phase = phaseResults
 	roundsBefore := g.rounds
 	g.HandleInput("enter")
@@ -197,18 +162,18 @@ func TestHandleInput_Enter_StartsNextRound(t *testing.T) {
 }
 
 func TestHandleInput_IgnoredDuringDealing(t *testing.T) {
-	g := NewBlackjack(0) // starts in phaseDealing
-	before := len(g.players[0].hand)
+	g := NewBlackjack()
+	before := len(g.player.hand)
 	g.HandleInput("h")
-	if len(g.players[0].hand) != before {
+	if len(g.player.hand) != before {
 		t.Error("hit during phaseDealing should be ignored")
 	}
 }
 
 func TestRender_ContainsLabels(t *testing.T) {
-	g := NewBlackjack(2)
+	g := NewBlackjack()
 	out := g.Render()
-	for _, want := range []string{"BLACKJACK", "DEALER", "YOU", "AI-1", "AI-2"} {
+	for _, want := range []string{"BLACKJACK", "DEALER", "YOU"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("Render() missing %q", want)
 		}
@@ -216,9 +181,9 @@ func TestRender_ContainsLabels(t *testing.T) {
 }
 
 func TestRender_ResultsPhaseShowsPromptAndResult(t *testing.T) {
-	g := NewBlackjack(0)
+	g := NewBlackjack()
 	g.phase = phaseResults
-	g.players[0].result = "WIN"
+	g.player.result = "WIN"
 	out := g.Render()
 	if !strings.Contains(out, "WIN") {
 		t.Error("Render() in phaseResults should show WIN")
@@ -229,8 +194,10 @@ func TestRender_ResultsPhaseShowsPromptAndResult(t *testing.T) {
 }
 
 func TestRender_PlayerTurnShowsActions(t *testing.T) {
-	g := NewBlackjack(0)
-	g.Update(dealDelay + time.Millisecond) // → phasePlayerTurn
+	g := NewBlackjack()
+	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}}
+	g.player.status = statusPlaying
+	g.phase = phaseTurn
 	out := g.Render()
 	if !strings.Contains(out, "Hit") && !strings.Contains(out, "H-Hit") {
 		t.Error("player turn should show hit action")

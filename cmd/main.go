@@ -274,7 +274,7 @@ func (m *model) updateBlackjackOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter", " ":
 		if m.selected == 0 {
-			m.game = blackjack.NewBlackjack(3)
+			m.game = blackjack.NewBlackjack()
 			m.activeGame = gameKindBlackjack
 			m.currentMenu = menuPlaying
 			m.gameOver = false
@@ -299,7 +299,7 @@ func (m *model) restartGame() {
 	case gameKindSudoku:
 		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
 	case gameKindBlackjack:
-		m.game = blackjack.NewBlackjack(3)
+		m.game = blackjack.NewBlackjack()
 	}
 }
 

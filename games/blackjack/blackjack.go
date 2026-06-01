@@ -6,15 +6,16 @@ import (
 	"strings"
 	"time"
 
+	cxansi "github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 )
 
 type phase int
 
 const (
 	phaseDealing phase = iota
-	phaseAITurn
-	phasePlayerTurn
+	phaseTurn
 	phaseDealerTurn
 	phaseResults
 )
@@ -32,7 +33,6 @@ type tablePlayer struct {
 	name   string
 	hand   Hand
 	status playerStatus
-	isAI   bool
 	result string // "WIN", "LOSE", "PUSH", or ""
 }
 
@@ -40,9 +40,8 @@ type Blackjack struct {
 	rng     *rand.Rand
 	deck    Deck
 	dealer  Hand
-	players []*tablePlayer // [0]=human, [1..]=AI
+	player  tablePlayer
 	phase   phase
-	aiIdx   int
 	elapsed time.Duration
 	wins    int
 	rounds  int
@@ -50,22 +49,11 @@ type Blackjack struct {
 
 const (
 	dealDelay   = 600 * time.Millisecond
-	aiStepDelay = 500 * time.Millisecond
 	dealerDelay = 700 * time.Millisecond
 )
 
-func NewBlackjack(aiCount int) *Blackjack {
-	if aiCount < 0 {
-		aiCount = 0
-	}
-	if aiCount > 3 {
-		aiCount = 3
-	}
+func NewBlackjack() *Blackjack {
 	b := &Blackjack{rng: rand.New(rand.NewSource(time.Now().UnixNano()))}
-	b.players = append(b.players, &tablePlayer{name: "YOU", isAI: false})
-	for _, name := range []string{"AI-1", "AI-2", "AI-3"}[:aiCount] {
-		b.players = append(b.players, &tablePlayer{name: name, isAI: true})
-	}
 	b.startRound()
 	return b
 }
@@ -73,25 +61,16 @@ func NewBlackjack(aiCount int) *Blackjack {
 func (b *Blackjack) startRound() {
 	b.deck = NewDeck().Shuffled(b.rng)
 	b.dealer = Hand{}
-	for _, p := range b.players {
-		p.hand = Hand{}
-		p.status = statusPlaying
-		p.result = ""
-	}
+	b.player = tablePlayer{name: "YOU"}
 	for i := 0; i < 2; i++ {
-		for _, p := range b.players {
-			p.hand = append(p.hand, b.deck.Draw())
-		}
+		b.player.hand = append(b.player.hand, b.deck.Draw())
 		b.dealer = append(b.dealer, b.deck.Draw())
 	}
-	for _, p := range b.players {
-		if p.hand.IsBlackjack() {
-			p.status = statusBlackjack
-		}
+	if b.player.hand.IsBlackjack() {
+		b.player.status = statusBlackjack
 	}
 	b.phase = phaseDealing
 	b.elapsed = 0
-	b.aiIdx = 1
 	b.rounds++
 }
 
@@ -111,11 +90,6 @@ func (b *Blackjack) Update(delta time.Duration) error {
 			b.elapsed = 0
 			b.transitionFromDealing()
 		}
-	case phaseAITurn:
-		if b.elapsed >= aiStepDelay {
-			b.elapsed = 0
-			b.stepAI()
-		}
 	case phaseDealerTurn:
 		if b.elapsed >= dealerDelay {
 			b.elapsed = 0
@@ -126,47 +100,11 @@ func (b *Blackjack) Update(delta time.Duration) error {
 }
 
 func (b *Blackjack) transitionFromDealing() {
-	if len(b.players) > 1 {
-		b.aiIdx = 1
-		b.phase = phaseAITurn
-		b.skipDoneAIs()
+	if b.player.status == statusPlaying {
+		b.phase = phaseTurn
 	} else {
-		b.phase = phasePlayerTurn
-	}
-}
-
-func (b *Blackjack) skipDoneAIs() {
-	for b.aiIdx < len(b.players) && b.players[b.aiIdx].status != statusPlaying {
-		b.aiIdx++
-	}
-	if b.aiIdx >= len(b.players) {
-		if b.players[0].status == statusPlaying {
-			b.phase = phasePlayerTurn
-		} else {
-			b.phase = phaseDealerTurn
-			b.elapsed = 0
-		}
-	}
-}
-
-func (b *Blackjack) stepAI() {
-	if b.aiIdx >= len(b.players) {
-		return
-	}
-	ai := b.players[b.aiIdx]
-	if ShouldHit(ai.hand) {
-		ai.hand = append(ai.hand, b.deck.Draw())
-		if ai.hand.IsBust() {
-			ai.status = statusBust
-			b.aiIdx++
-			b.skipDoneAIs()
-			return
-		}
-		// Non-bust hit: AI gets another tick to decide again
-	} else {
-		ai.status = statusStand
-		b.aiIdx++
-		b.skipDoneAIs()
+		b.phase = phaseDealerTurn
+		b.elapsed = 0
 	}
 }
 
@@ -184,52 +122,46 @@ func (b *Blackjack) evaluateResults() {
 	dv := b.dealer.Value()
 	dealerBust := b.dealer.IsBust()
 	dealerBJ := b.dealer.IsBlackjack()
-	for _, p := range b.players {
-		switch p.status {
-		case statusBust:
+	p := &b.player
+	switch p.status {
+	case statusBust:
+		p.result = "LOSE"
+	case statusBlackjack:
+		if dealerBJ {
+			p.result = "PUSH"
+		} else {
+			p.result = "WIN"
+			b.wins++
+		}
+	default:
+		pv := p.hand.Value()
+		if dealerBust || pv > dv {
+			p.result = "WIN"
+			b.wins++
+		} else if pv == dv {
+			p.result = "PUSH"
+		} else {
 			p.result = "LOSE"
-		case statusBlackjack:
-			if dealerBJ {
-				p.result = "PUSH"
-			} else {
-				p.result = "WIN"
-				if !p.isAI {
-					b.wins++
-				}
-			}
-		default:
-			pv := p.hand.Value()
-			if dealerBust || pv > dv {
-				p.result = "WIN"
-				if !p.isAI {
-					b.wins++
-				}
-			} else if pv == dv {
-				p.result = "PUSH"
-			} else {
-				p.result = "LOSE"
-			}
 		}
 	}
 }
 
 func (b *Blackjack) HandleInput(key string) {
 	switch b.phase {
-	case phasePlayerTurn:
-		human := b.players[0]
-		if human.status != statusPlaying {
+	case phaseTurn:
+		if b.player.status != statusPlaying {
 			return
 		}
 		switch key {
 		case "h", "left":
-			human.hand = append(human.hand, b.deck.Draw())
-			if human.hand.IsBust() {
-				human.status = statusBust
-				b.phase = phaseDealerTurn
-				b.elapsed = 0
+			b.player.hand = append(b.player.hand, b.deck.Draw())
+			if b.player.hand.IsBust() {
+				b.player.status = statusBust
 			}
+			b.phase = phaseDealerTurn
+			b.elapsed = 0
 		case "s", "right", "down":
-			human.status = statusStand
+			b.player.status = statusStand
 			b.phase = phaseDealerTurn
 			b.elapsed = 0
 		}
@@ -322,7 +254,7 @@ func bjRenderHandBudget(hand Hand, maxWidth int) string {
 }
 
 func bjPad(s string, width int) string {
-	vis := lipgloss.Width(s)
+	vis := runewidth.StringWidth(cxansi.Strip(s))
 	if vis >= width {
 		return s
 	}
@@ -330,7 +262,7 @@ func bjPad(s string, width int) string {
 }
 
 func bjCenter(s string, width int) string {
-	vis := lipgloss.Width(s)
+	vis := runewidth.StringWidth(cxansi.Strip(s))
 	if vis >= width {
 		return s
 	}
@@ -342,41 +274,29 @@ func (b *Blackjack) Render() string {
 	revealed := b.phase == phaseDealerTurn || b.phase == phaseResults
 	brd := func(s string) string { return bjBorderSty.Render(s) }
 	row := func(content string) string {
-		return brd("║") + bjPad(content, bjInnerWidth) + brd("║\n")
+		return brd("║") + bjPad(content, bjInnerWidth) + brd("║") + "\n"
 	}
 	blank := func() string { return row("") }
 
 	var sb strings.Builder
-	sb.WriteString(brd("╔" + strings.Repeat("═", bjInnerWidth) + "╗\n"))
+	sb.WriteString(brd("╔"+strings.Repeat("═", bjInnerWidth)+"╗") + "\n")
 	sb.WriteString(row(bjCenter(bjTitleSty.Render("BLACKJACK"), bjInnerWidth)))
-	sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
+	sb.WriteString(brd("╠"+strings.Repeat("═", bjInnerWidth)+"╣") + "\n")
 
 	// Dealer
 	dealerCards, dealerVal := bjRenderHandMasked(b.dealer, revealed)
 	sb.WriteString(row(" " + bjTextSty.Render("DEALER") + "  " + dealerCards + dealerVal))
 
-	// AI players
-	maskAI := b.phase != phaseResults
-	if len(b.players) > 1 {
-		sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
-		for i := 1; i < len(b.players); i++ {
-			active := b.phase == phaseAITurn && b.aiIdx == i
-			sb.WriteString(row(b.renderPlayerRow(b.players[i], active, maskAI)))
-		}
-	}
-
-	sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
-	sb.WriteString(row(b.renderPlayerRow(b.players[0], b.phase == phasePlayerTurn, false)))
+	sb.WriteString(brd("╠"+strings.Repeat("═", bjInnerWidth)+"╣") + "\n")
+	sb.WriteString(row(b.renderPlayerRow(b.phase == phaseTurn)))
 	sb.WriteString(blank())
 
 	switch b.phase {
-	case phasePlayerTurn:
+	case phaseTurn:
 		actions := "  " + bjHotSty.Render(" H-Hit ") + "   " + bjActionSty.Render(" S-Stand ")
 		sb.WriteString(row(actions))
 	case phaseResults:
 		sb.WriteString(row("  " + bjPushSty.Render("Press ENTER / SPACE for next round")))
-	case phaseAITurn:
-		sb.WriteString(row("  " + bjLabelSty.Render("Waiting for AI...")))
 	case phaseDealerTurn:
 		sb.WriteString(row("  " + bjLabelSty.Render("Dealer's turn...")))
 	default:
@@ -389,20 +309,15 @@ func (b *Blackjack) Render() string {
 	return sb.String()
 }
 
-func (b *Blackjack) renderPlayerRow(p *tablePlayer, active, maskHand bool) string {
+func (b *Blackjack) renderPlayerRow(active bool) string {
+	p := &b.player
 	nameSty := bjTextSty
 	if active {
 		nameSty = bjActiveSty
 	}
 	name := nameSty.Render(fmt.Sprintf("%-5s", p.name))
 
-	var cards, val string
-	if maskHand {
-		cards, val = bjRenderHandMasked(p.hand, false)
-	} else {
-		val = bjLabelSty.Render(fmt.Sprintf(" (%d)", p.hand.Value()))
-		// budget applied below after statusStr is known
-	}
+	val := bjLabelSty.Render(fmt.Sprintf(" (%d)", p.hand.Value()))
 
 	statusStr := ""
 	switch p.status {
@@ -422,13 +337,10 @@ func (b *Blackjack) renderPlayerRow(p *tablePlayer, active, maskHand bool) strin
 		statusStr += "  " + bjPushSty.Render("PUSH")
 	}
 
-	if !maskHand {
-		// " " + 5-char name + "  " = 8 visible chars prefix; reserve space for val+status
-		const prefixW = 8
-		suffixW := lipgloss.Width(val) + lipgloss.Width(statusStr)
-		cardBudget := bjInnerWidth - prefixW - suffixW
-		cards = bjRenderHandBudget(p.hand, cardBudget)
-	}
+	const prefixW = 8
+	suffixW := lipgloss.Width(val) + lipgloss.Width(statusStr)
+	cardBudget := bjInnerWidth - prefixW - suffixW
+	cards := bjRenderHandBudget(p.hand, cardBudget)
 
 	return " " + name + "  " + cards + val + statusStr
 }
