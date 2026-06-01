@@ -193,9 +193,7 @@ func hardDecision(rng *rand.Rand, b bucket, toCall int, pot int, minRaise int, c
 	if toCall > 0 {
 		odd := float64(toCall) / float64(pot+toCall)
 		if odd >= equity {
-			if rng.Intn(100) >= 10 || b != bucketTrash {
-				return Decision{Action: ActionFold}
-			}
+			return Decision{Action: ActionFold}
 		}
 	}
 	switch b {
