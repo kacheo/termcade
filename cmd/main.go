@@ -332,7 +332,7 @@ func (m *model) updatePokerOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		switch m.selected {
 		case 2:
-			m.game = poker.NewPoker(m.pokerOpts.seats, m.pokerOpts.difficulty)
+			m.game = poker.NewPoker(m.pokerOpts.seats, poker.Difficulty(m.pokerOpts.difficulty))
 			m.activeGame = gameKindPoker
 			m.currentMenu = menuPlaying
 			m.gameOver = false
@@ -359,7 +359,7 @@ func (m *model) restartGame() {
 	case gameKindBlackjack:
 		m.game = blackjack.NewBlackjack()
 	case gameKindPoker:
-		m.game = poker.NewPoker(m.pokerOpts.seats, m.pokerOpts.difficulty)
+		m.game = poker.NewPoker(m.pokerOpts.seats, poker.Difficulty(m.pokerOpts.difficulty))
 	}
 }
 
