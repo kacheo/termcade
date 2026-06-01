@@ -293,10 +293,10 @@ func (p *Poker) applyAction(d Decision) {
 		p.players[p.action].allIn = true
 		p.players[p.action].bet += allInAmount
 		p.pot += allInAmount
-		if p.toCall < p.players[p.action].bet {
+		if p.players[p.action].bet > p.toCall {
 			p.toCall = p.players[p.action].bet
+			p.lastRaiser = p.action
 		}
-		p.lastRaiser = p.action
 		p.message = fmt.Sprintf("%s is all-in!", p.players[p.action].name)
 	}
 	p.advanceToNextPlayer()
@@ -345,19 +345,49 @@ func (p *Poker) showdown() {
 	if len(activePlayers) == 0 {
 		return
 	}
+
 	bestIdx := activePlayers[0]
 	bestHand := Evaluate(append(p.players[bestIdx].hole[:], p.community...))
+
+	winners := []int{bestIdx}
 	for _, idx := range activePlayers[1:] {
 		hand := Evaluate(append(p.players[idx].hole[:], p.community...))
-		if Compare(hand, bestHand) > 0 {
+		cmp := Compare(hand, bestHand)
+		if cmp > 0 {
 			bestHand = hand
-			bestIdx = idx
+			winners = []int{idx}
+		} else if cmp == 0 {
+			winners = append(winners, idx)
 		}
 	}
-	rankName := handRankName(bestHand.Rank)
-	p.message = fmt.Sprintf("%s wins with %s — $%d", p.players[bestIdx].name, rankName, p.pot)
-	p.players[bestIdx].chips += p.pot
+
+	splitAmount := p.pot / len(winners)
+	for _, w := range winners {
+		p.players[w].chips += splitAmount
+	}
+	remainder := p.pot % len(winners)
+	if remainder > 0 {
+		for i := 0; i < len(p.players); i++ {
+			checkIdx := (p.dealer + 1 + i) % len(p.players)
+			for _, w := range winners {
+				if checkIdx == w {
+					p.players[checkIdx].chips += remainder
+					break
+				}
+			}
+			if p.players[checkIdx].chips > splitAmount {
+				break
+			}
+		}
+	}
 	p.pot = 0
+
+	rankName := handRankName(bestHand.Rank)
+	if len(winners) == 1 {
+		p.message = fmt.Sprintf("%s wins with %s — $%d", p.players[winners[0]].name, rankName, splitAmount)
+	} else {
+		p.message = fmt.Sprintf("Split pot! %d players tie with %s — $%d each", len(winners), rankName, splitAmount)
+	}
 }
 
 func handRankName(rank HandRank) string {
@@ -481,8 +511,9 @@ func (p *Poker) render() string {
 	hiddenStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#555555"))
 
-	var activeStyle lipgloss.Style
-	_ = activeStyle
+	activeStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00FF88")).
+		Bold(true)
 
 	foldedStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#444444"))
@@ -527,7 +558,7 @@ func (p *Poker) render() string {
 	sb.WriteString(borderStyle.Render(fmt.Sprintf("╠%s╣", strings.Repeat("═", 45))))
 	sb.WriteString("\n")
 
-	for _, pl := range p.players {
+	for i, pl := range p.players {
 		if pl.isHuman {
 			continue
 		}
@@ -546,6 +577,9 @@ func (p *Poker) render() string {
 		}
 
 		row := fmt.Sprintf("║  %s  %s  $%-5d  %-10s║", cards.Pad(pl.name, 5), holeStr, pl.chips, status)
+		if i == p.action {
+			row = activeStyle.Render(row)
+		}
 		sb.WriteString(cards.Pad(row, 47))
 		sb.WriteString("\n")
 
