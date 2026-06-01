@@ -83,6 +83,11 @@ func (p *Poker) startHand() {
 		p.phase = phaseGameOver
 		return
 	}
+	if p.players[0].chips == 0 {
+		p.gameOver = true
+		p.phase = phaseGameOver
+		return
+	}
 	activeHuman := false
 	for _, pl := range p.players {
 		if pl.isHuman {
@@ -247,11 +252,21 @@ func (p *Poker) applyAction(d Decision) {
 	case ActionRaise:
 		raiseAmount := d.Amount
 		totalToCall := p.toCall - p.players[p.action].bet + raiseAmount
-		if totalToCall > p.players[p.action].chips {
-			raiseAmount = p.players[p.action].chips - (p.toCall - p.players[p.action].bet)
-			if raiseAmount < 0 {
-				raiseAmount = 0
+		playerChips := p.players[p.action].chips
+		if totalToCall > playerChips {
+			allInAmount := playerChips
+			p.players[p.action].chips = 0
+			p.players[p.action].allIn = true
+			p.players[p.action].bet += allInAmount
+			p.pot += allInAmount
+			if p.toCall < p.players[p.action].bet {
+				p.toCall = p.players[p.action].bet
 			}
+			p.lastRaiser = p.action
+			p.message = fmt.Sprintf("%s is all-in!", p.players[p.action].name)
+			p.advanceToNextPlayer()
+			p.aiDelay = 0
+			return
 		}
 		additional := raiseAmount
 		p.players[p.action].chips -= additional
@@ -375,7 +390,7 @@ func (p *Poker) Update(delta time.Duration) error {
 	p.elapsed += delta
 	switch p.phase {
 	case phasePreflop, phaseFlop, phaseTurn, phaseRiver:
-		if p.action != 0 && !p.players[0].folded {
+		if p.action != 0 && !p.players[p.action].folded && !p.players[p.action].allIn {
 			p.processAITurn()
 		}
 		if p.bettingRoundEnded() {
