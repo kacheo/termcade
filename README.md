@@ -26,49 +26,25 @@ Requires Go 1.21+.
 
 ## Games
 
-### Tetris
-
-Fully implemented with all standard mechanics.
-
-**Options (before starting):**
-- Ghost piece — shows a shadow where the current piece will land
-- Start level — 0–9 (higher = faster drop speed)
-
-**Controls:**
-
-| Key | Action |
-|-----|--------|
-| `← →` | Move |
-| `↑` | Rotate |
-| `↓` | Soft drop |
-| `Space` | Hard drop |
-| `P` | Pause / Resume |
-| `Q` | Quit to menu |
-
-**Scoring:**
-
-| Lines cleared | Points |
-|---------------|--------|
-| 1 | 100 × (level + 1) |
-| 2 | 300 × (level + 1) |
-| 3 | 500 × (level + 1) |
-| 4 (Tetris!) | 800 × (level + 1) |
-
-Soft drop: +1 pt/row · Hard drop: +2 pt/row · Level up every 10 lines
-
-### Snake, Pong
-
-Coming soon.
+| Game | Description | Docs |
+|------|-------------|------|
+| Tetris | Classic block-stacking with ghost piece and configurable start level | [games/tetris/README.md](games/tetris/README.md) |
+| Snake | Guide your snake to food, avoid walls and yourself | [games/snake/README.md](games/snake/README.md) |
+| Sudoku | Procedurally generated number puzzles, three difficulty levels | [games/sudoku/README.md](games/sudoku/README.md) |
+| Blackjack | Player vs dealer — hit or stand to beat 21 | [games/blackjack/README.md](games/blackjack/README.md) |
 
 ---
 
 ## Project Structure
 
 ```
-cmd/            — entry point, menu state machine
-core/           — Game interface, colour palette
-  ui/           — lipgloss helpers
-games/tetris/   — Tetris game logic and board
+cmd/              — entry point, menu state machine
+core/             — Game interface, colour palette, input helpers
+  ui/             — lipgloss style helpers
+games/tetris/     — Tetris (ghost piece, configurable start level)
+games/snake/      — Snake (20×20 grid, 10 levels)
+games/sudoku/     — Sudoku (procedurally generated, 3 difficulties)
+games/blackjack/  — Blackjack (player vs dealer)
 ```
 
 Adding a new game: implement `core.Game` and register it in `cmd/main.go`.
