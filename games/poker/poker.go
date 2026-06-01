@@ -268,10 +268,11 @@ func (p *Poker) applyAction(d Decision) {
 			p.aiDelay = 0
 			return
 		}
-		additional := raiseAmount
-		p.players[p.action].chips -= additional
-		p.players[p.action].bet += additional
-		p.pot += additional
+		callAmount := p.toCall - p.players[p.action].bet
+		totalNeeded := callAmount + raiseAmount
+		p.players[p.action].chips -= totalNeeded
+		p.players[p.action].bet = p.toCall + raiseAmount
+		p.pot += totalNeeded
 		p.toCall = p.players[p.action].bet
 		p.minRaise = raiseAmount
 		if raiseAmount > 0 {
@@ -324,12 +325,11 @@ func (p *Poker) endBettingRound() {
 		p.phase = phaseShowdown
 		p.elapsed = 0
 	}
-	if p.action >= len(p.players) {
-		p.action = 0
-	}
+	start := (p.dealer + 1) % len(p.players)
+	p.action = start
 	for p.players[p.action].folded || p.players[p.action].allIn {
 		p.action = (p.action + 1) % len(p.players)
-		if p.action == 0 {
+		if p.action == start {
 			break
 		}
 	}

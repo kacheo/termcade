@@ -37,15 +37,18 @@ func Evaluate(cardList []cards.Card) EvaluatedHand {
 		return evaluateFive(cardList)
 	}
 
-	best := EvaluatedHand{}
+	best := evaluateFive([]cards.Card{cardList[0], cardList[1], cardList[2], cardList[3], cardList[4]})
 	for i := 0; i < len(cardList); i++ {
 		for j := i + 1; j < len(cardList); j++ {
 			for k := j + 1; k < len(cardList); k++ {
 				for l := k + 1; l < len(cardList); l++ {
 					for m := l + 1; m < len(cardList); m++ {
+						if i == 0 && j == 1 && k == 2 && l == 3 && m == 4 {
+							continue
+						}
 						combo := []cards.Card{cardList[i], cardList[j], cardList[k], cardList[l], cardList[m]}
 						evaluated := evaluateFive(combo)
-						if compareRanks(evaluated, best) > 0 {
+						if Compare(evaluated, best) > 0 {
 							best = evaluated
 						}
 					}

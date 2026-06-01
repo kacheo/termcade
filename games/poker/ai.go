@@ -176,9 +176,6 @@ func mediumDecision(rng *rand.Rand, b bucket, toCall int, pot int, minRaise int,
 		}
 		return Decision{Action: ActionRaise, Amount: minRaise}
 	case bucketMonster:
-		if toCall == 0 {
-			return Decision{Action: ActionCheck}
-		}
 		raiseAmount := minRaise * 2
 		if raiseAmount > chips {
 			raiseAmount = chips
@@ -224,9 +221,6 @@ func hardDecision(rng *rand.Rand, b bucket, toCall int, pot int, minRaise int, c
 		}
 		return Decision{Action: ActionRaise, Amount: minRaise}
 	case bucketMonster:
-		if toCall == 0 {
-			return Decision{Action: ActionCheck}
-		}
 		raiseAmount := minRaise * 2
 		if raiseAmount > chips {
 			raiseAmount = chips

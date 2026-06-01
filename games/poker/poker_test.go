@@ -58,6 +58,11 @@ func TestStartHandDealsHoleCardsAndPostsBlinds(t *testing.T) {
 
 func TestFoldingAllAILeavesPotToHuman(t *testing.T) {
 	p := NewPoker(3, Easy)
+	// Reset chips to a known baseline — NewPoker randomly assigns blinds so
+	// the human may have paid 0, 10, or 20 chips before we set up the scenario.
+	for i := range p.players {
+		p.players[i].chips = 1000
+	}
 	p.pot = 100
 	p.community = make([]cards.Card, 5)
 	p.players[0].folded = false
