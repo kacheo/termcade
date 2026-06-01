@@ -269,6 +269,24 @@ func bjRenderCard(c Card) string {
 
 func bjRenderHidden() string { return bjHiddenSty.Render("[??]") }
 
+// bjRenderHandMasked returns (cards, valueLabel).
+// revealed=false: first card shown, rest as [??], value shown as "(X+?)".
+// revealed=true:  all cards shown, value as "(N)".
+func bjRenderHandMasked(hand Hand, revealed bool) (string, string) {
+	if revealed || len(hand) == 0 {
+		return bjRenderHand(hand), bjLabelSty.Render(fmt.Sprintf(" (%d)", hand.Value()))
+	}
+	cards := bjRenderCard(hand[0])
+	for range hand[1:] {
+		cards += " " + bjRenderHidden()
+	}
+	showing := hand[0].BaseValue()
+	if hand[0].Rank == Ace {
+		showing = 11
+	}
+	return cards, bjLabelSty.Render(fmt.Sprintf(" (%d+?)", showing))
+}
+
 func bjRenderHand(hand Hand) string {
 	parts := make([]string, len(hand))
 	for i, c := range hand {
@@ -333,40 +351,21 @@ func (b *Blackjack) Render() string {
 	sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
 
 	// Dealer
-	var dealerCards string
-	if revealed {
-		dealerCards = bjRenderHand(b.dealer)
-	} else if len(b.dealer) > 0 {
-		dealerCards = bjRenderCard(b.dealer[0])
-		for range b.dealer[1:] {
-			dealerCards += " " + bjRenderHidden()
-		}
-	}
-	dealerVal := ""
-	if len(b.dealer) > 0 {
-		if revealed {
-			dealerVal = bjLabelSty.Render(fmt.Sprintf(" (%d)", b.dealer.Value()))
-		} else {
-			showing := b.dealer[0].BaseValue()
-			if b.dealer[0].Rank == Ace {
-				showing = 11
-			}
-			dealerVal = bjLabelSty.Render(fmt.Sprintf(" (%d+?)", showing))
-		}
-	}
+	dealerCards, dealerVal := bjRenderHandMasked(b.dealer, revealed)
 	sb.WriteString(row(" " + bjTextSty.Render("DEALER") + "  " + dealerCards + dealerVal))
 
 	// AI players
+	maskAI := b.phase != phaseResults
 	if len(b.players) > 1 {
 		sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
 		for i := 1; i < len(b.players); i++ {
 			active := b.phase == phaseAITurn && b.aiIdx == i
-			sb.WriteString(row(b.renderPlayerRow(b.players[i], active)))
+			sb.WriteString(row(b.renderPlayerRow(b.players[i], active, maskAI)))
 		}
 	}
 
 	sb.WriteString(brd("╠" + strings.Repeat("═", bjInnerWidth) + "╣\n"))
-	sb.WriteString(row(b.renderPlayerRow(b.players[0], b.phase == phasePlayerTurn)))
+	sb.WriteString(row(b.renderPlayerRow(b.players[0], b.phase == phasePlayerTurn, false)))
 	sb.WriteString(blank())
 
 	switch b.phase {
@@ -389,13 +388,20 @@ func (b *Blackjack) Render() string {
 	return sb.String()
 }
 
-func (b *Blackjack) renderPlayerRow(p *tablePlayer, active bool) string {
+func (b *Blackjack) renderPlayerRow(p *tablePlayer, active, maskHand bool) string {
 	nameSty := bjTextSty
 	if active {
 		nameSty = bjActiveSty
 	}
 	name := nameSty.Render(fmt.Sprintf("%-5s", p.name))
-	val := bjLabelSty.Render(fmt.Sprintf(" (%d)", p.hand.Value()))
+
+	var cards, val string
+	if maskHand {
+		cards, val = bjRenderHandMasked(p.hand, false)
+	} else {
+		val = bjLabelSty.Render(fmt.Sprintf(" (%d)", p.hand.Value()))
+		// budget applied below after statusStr is known
+	}
 
 	statusStr := ""
 	switch p.status {
@@ -415,11 +421,13 @@ func (b *Blackjack) renderPlayerRow(p *tablePlayer, active bool) string {
 		statusStr += "  " + bjPushSty.Render("PUSH")
 	}
 
-	// " " + 5-char name + "  " = 8 visible chars prefix; reserve space for val+status
-	const prefixW = 8
-	suffixW := lipgloss.Width(val) + lipgloss.Width(statusStr)
-	cardBudget := bjInnerWidth - prefixW - suffixW
-	cards := bjRenderHandBudget(p.hand, cardBudget)
+	if !maskHand {
+		// " " + 5-char name + "  " = 8 visible chars prefix; reserve space for val+status
+		const prefixW = 8
+		suffixW := lipgloss.Width(val) + lipgloss.Width(statusStr)
+		cardBudget := bjInnerWidth - prefixW - suffixW
+		cards = bjRenderHandBudget(p.hand, cardBudget)
+	}
 
 	return " " + name + "  " + cards + val + statusStr
 }
