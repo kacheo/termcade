@@ -12,7 +12,7 @@ import (
 type phase int
 
 const (
-	phaseDealing    phase = iota
+	phaseDealing phase = iota
 	phaseAITurn
 	phasePlayerTurn
 	phaseDealerTurn
@@ -22,7 +22,7 @@ const (
 type playerStatus int
 
 const (
-	statusPlaying   playerStatus = iota
+	statusPlaying playerStatus = iota
 	statusStand
 	statusBust
 	statusBlackjack
@@ -37,15 +37,15 @@ type tablePlayer struct {
 }
 
 type Blackjack struct {
-	rng      *rand.Rand
-	deck     Deck
-	dealer   Hand
-	players  []*tablePlayer // [0]=human, [1..]=AI
-	phase    phase
-	aiIdx    int
-	elapsed  time.Duration
-	wins   int
-	rounds int
+	rng     *rand.Rand
+	deck    Deck
+	dealer  Hand
+	players []*tablePlayer // [0]=human, [1..]=AI
+	phase   phase
+	aiIdx   int
+	elapsed time.Duration
+	wins    int
+	rounds  int
 }
 
 const (
@@ -97,8 +97,8 @@ func (b *Blackjack) startRound() {
 
 func (b *Blackjack) Name() string        { return "Blackjack" }
 func (b *Blackjack) Description() string { return "Beat the dealer. Hit or stand." }
-func (b *Blackjack) IsPaused() bool   { return false }
-func (b *Blackjack) IsGameOver() bool { return false }
+func (b *Blackjack) IsPaused() bool      { return false }
+func (b *Blackjack) IsGameOver() bool    { return false }
 func (b *Blackjack) GetScore() int       { return b.wins }
 func (b *Blackjack) GetLevel() int       { return 0 }
 func (b *Blackjack) GetLines() int       { return b.rounds }
@@ -239,6 +239,7 @@ func (b *Blackjack) HandleInput(key string) {
 		}
 	}
 }
+
 var (
 	bjBorderSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
 	bjTitleSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
