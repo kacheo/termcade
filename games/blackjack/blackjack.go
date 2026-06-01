@@ -9,6 +9,8 @@ import (
 	cxansi "github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
+
+	cardpkg "tmvgs/games/cards"
 )
 
 type phase int
@@ -38,7 +40,7 @@ type tablePlayer struct {
 
 type Blackjack struct {
 	rng     *rand.Rand
-	deck    Deck
+	deck    cardpkg.Deck
 	dealer  Hand
 	player  tablePlayer
 	phase   phase
@@ -59,7 +61,7 @@ func NewBlackjack() *Blackjack {
 }
 
 func (b *Blackjack) startRound() {
-	b.deck = NewDeck().Shuffled(b.rng)
+	b.deck = cardpkg.NewDeck().Shuffled(b.rng)
 	b.dealer = Hand{}
 	b.player = tablePlayer{name: "YOU"}
 	for i := 0; i < 2; i++ {
@@ -192,7 +194,7 @@ var (
 
 const bjInnerWidth = 46
 
-func bjRenderCard(c Card) string {
+func bjRenderCard(c cardpkg.Card) string {
 	s := fmt.Sprintf("[%s%s]", c.Symbol(), c.SuitSymbol())
 	if c.IsRed() {
 		return bjRedCardSty.Render(s)
@@ -213,8 +215,10 @@ func bjRenderHandMasked(hand Hand, revealed bool) (string, string) {
 	for range hand[1:] {
 		cards += " " + bjRenderHidden()
 	}
-	showing := hand[0].BaseValue()
-	if hand[0].Rank == Ace {
+	showing := int(hand[0].Rank)
+	if hand[0].Rank >= cardpkg.Ten {
+		showing = 10
+	} else if hand[0].Rank == cardpkg.Ace {
 		showing = 11
 	}
 	return cards, bjLabelSty.Render(fmt.Sprintf(" (%d+?)", showing))
