@@ -15,10 +15,10 @@
 **Why:** Iconic, minimal learning curve, proven fun
 **Effort:** ~4-6 hours
 
-### 2. Pong
-**Status:** Menu placeholder exists
-**Controls:** Arrow keys (player) vs AI
-**Why:** Classic, instant competitive feel
+### 2. Blackjack
+**Status:** Not started
+**Controls:** Arrow keys to select action + Enter to confirm (Hit / Stand / Double / Split)
+**Why:** Universally known rules, fast hands, ASCII card rendering, pure decision-making
 **Effort:** ~4-6 hours
 
 ### 3. Minesweeper
