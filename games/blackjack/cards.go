@@ -141,6 +141,9 @@ func (d Deck) Shuffled(r *rand.Rand) Deck {
 
 // Draw removes and returns the top card. Panics if the deck is empty.
 func (d *Deck) Draw() Card {
+	if len(*d) == 0 {
+		panic("blackjack: draw from empty deck")
+	}
 	c := (*d)[0]
 	*d = (*d)[1:]
 	return c
