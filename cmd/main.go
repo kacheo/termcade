@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"tmvgs/core"
 	"tmvgs/games/snake"
+	"tmvgs/games/sudoku"
 	"tmvgs/games/tetris"
 )
 
@@ -23,6 +24,7 @@ const (
 	menuMain menuState = iota
 	menuTetrisOptions
 	menuSnakeOptions
+	menuSudokuOptions
 	menuPlaying
 	menuPause
 	menuGameOver
@@ -33,6 +35,7 @@ type gameKind int
 const (
 	gameKindTetris gameKind = iota
 	gameKindSnake
+	gameKindSudoku
 )
 
 type model struct {
@@ -45,6 +48,10 @@ type model struct {
 	tetrisOpts  struct {
 		ghost      bool
 		startLevel int
+	}
+	sudokuOpts struct {
+		difficulty   sudoku.Difficulty
+		highlightIdx int
 	}
 }
 
@@ -83,6 +90,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateTetrisOptions(msg)
 		case menuSnakeOptions:
 			return m.updateSnakeOptions(msg)
+		case menuSudokuOptions:
+			return m.updateSudokuOptions(msg)
 		case menuPlaying:
 			return m.updateGame(msg)
 		case menuPause:
@@ -95,7 +104,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Play Tetris", "Play Snake", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Pong (coming soon)", "", "Quit"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
@@ -113,7 +122,10 @@ func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 1:
 			m.currentMenu = menuSnakeOptions
 			m.selected = 0
-		case 4:
+		case 2:
+			m.currentMenu = menuSudokuOptions
+			m.selected = 0
+		case 5:
 			return m, tea.Quit
 		}
 	}
@@ -165,13 +177,14 @@ func (m *model) updateTetrisOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateSnakeOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	items := []string{"Start Game", "Back"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
 		}
 	case "down", "j":
-		if m.selected < 1 {
+		if m.selected < len(items)-1 {
 			m.selected++
 		}
 	case "enter", " ":
@@ -192,12 +205,63 @@ func (m *model) updateSnakeOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) updateSudokuOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// 4 items: 0=Difficulty, 1=Highlight, 2=Start Game, 3=Back
+	n := len(sudoku.HighlightOptions)
+	switch msg.String() {
+	case "up", "k":
+		if m.selected > 0 {
+			m.selected--
+		}
+	case "down", "j":
+		if m.selected < 3 {
+			m.selected++
+		}
+	case "left", "h":
+		if m.selected == 0 {
+			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 2) % 3
+		}
+		if m.selected == 1 {
+			m.sudokuOpts.highlightIdx = (m.sudokuOpts.highlightIdx + n - 1) % n
+		}
+	case "right", "l":
+		if m.selected == 0 {
+			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 1) % 3
+		}
+		if m.selected == 1 {
+			m.sudokuOpts.highlightIdx = (m.sudokuOpts.highlightIdx + 1) % n
+		}
+	case "enter", " ":
+		switch m.selected {
+		case 0:
+			m.sudokuOpts.difficulty = (m.sudokuOpts.difficulty + 1) % 3
+		case 1:
+			m.sudokuOpts.highlightIdx = (m.sudokuOpts.highlightIdx + 1) % n
+		case 2:
+			m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
+			m.activeGame = gameKindSudoku
+			m.currentMenu = menuPlaying
+			m.gameOver = false
+			m.selected = 0
+		case 3:
+			m.currentMenu = menuMain
+			m.selected = 0
+		}
+	case "q":
+		m.currentMenu = menuMain
+		m.selected = 0
+	}
+	return m, nil
+}
+
 func (m *model) restartGame() {
 	switch m.activeGame {
 	case gameKindTetris:
 		m.game = tetris.NewTetris(m.tetrisOpts.ghost, m.tetrisOpts.startLevel)
 	case gameKindSnake:
 		m.game = snake.NewSnake()
+	case gameKindSudoku:
+		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
 	}
 }
 
@@ -206,6 +270,18 @@ func (m *model) updateGame(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		m.currentMenu = menuMain
 		m.game = nil
+	case "esc":
+		if s, ok := m.game.(*sudoku.Sudoku); ok {
+			if s.QuitRequested() {
+				s.ClearQuitRequest()
+				m.currentMenu = menuMain
+				m.game = nil
+				return m, nil
+			}
+			s.HandleInput("esc")
+			return m, nil
+		}
+		m.game.HandleInput("esc")
 	case "p":
 		m.currentMenu = menuPause
 		m.selected = 0
@@ -237,6 +313,9 @@ func (m *model) updatePauseMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", " ":
 		switch m.selected {
 		case 0:
+			if s, ok := m.game.(*sudoku.Sudoku); ok {
+				s.Resume()
+			}
 			m.currentMenu = menuPlaying
 		case 1:
 			m.restartGame()
@@ -307,6 +386,8 @@ func (m *model) View() string {
 		return m.renderTetrisOptions()
 	case menuSnakeOptions:
 		return m.renderSnakeOptions()
+	case menuSudokuOptions:
+		return m.renderSudokuOptions()
 	case menuPlaying:
 		return m.renderGame()
 	case menuPause:
@@ -318,7 +399,7 @@ func (m *model) View() string {
 }
 
 func (m *model) renderMainMenu() string {
-	items := []string{"Play Tetris", "Play Snake", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Pong (coming soon)", "", "Quit"}
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
@@ -410,6 +491,57 @@ func (m *model) renderSnakeOptions() string {
 	return sb.String()
 }
 
+func (m *model) renderSudokuOptions() string {
+	difficultyText := "Easy"
+	switch m.sudokuOpts.difficulty {
+	case sudoku.DifficultyMedium:
+		difficultyText = "Medium"
+	case sudoku.DifficultyHard:
+		difficultyText = "Hard"
+	}
+	highlightText := sudoku.HighlightOptions[m.sudokuOpts.highlightIdx].Name
+
+	var sb strings.Builder
+	sb.WriteString("\n")
+	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+	sb.WriteString("  ║        Sudoku — Options              ║\n")
+	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+	sb.WriteString("  ║                                       ║\n")
+
+	hlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
+
+	diffStr := fmt.Sprintf("  ║   Difficulty    [ %-8s ]            ║", difficultyText)
+	if m.selected == 0 {
+		diffStr = fmt.Sprintf("  ║  ▶ Difficulty    [ %-8s ]            ║", difficultyText)
+		diffStr = hlStyle.Render(diffStr)
+	}
+	sb.WriteString(diffStr + "\n")
+
+	tintStr := fmt.Sprintf("  ║   Highlight     [ %-8s ]            ║", highlightText)
+	if m.selected == 1 {
+		tintStr = fmt.Sprintf("  ║  ▶ Highlight     [ %-8s ]            ║", highlightText)
+		tintStr = hlStyle.Render(tintStr)
+	}
+	sb.WriteString(tintStr + "\n")
+
+	sb.WriteString("  ║                                       ║\n")
+	if m.selected == 2 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+	} else {
+		sb.WriteString("  ║    Start Game                        ║\n")
+	}
+	if m.selected == 3 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+	} else {
+		sb.WriteString("  ║    Back                             ║\n")
+	}
+
+	sb.WriteString("  ║                                       ║\n")
+	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
+	sb.WriteString("    ←→ Change   ↑↓ Select   Enter Confirm   Q Back\n")
+	return sb.String()
+}
+
 func (m *model) renderGame() string {
 	if m.game == nil {
 		return "Loading..."
@@ -440,13 +572,33 @@ func (m *model) renderPauseMenu() string {
 func (m *model) renderGameOverMenu() string {
 	items := []string{"Play Again", "Main Menu"}
 	var sb strings.Builder
-	sb.WriteString("\n")
-	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
-	sb.WriteString("  ║            Game Over!                 ║\n")
-	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
-	sb.WriteString("  ║                                       ║\n")
 
-	if m.game != nil {
+	if m.game == nil {
+		sb.WriteString("\n")
+		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+		sb.WriteString("  ║            Game Over!                 ║\n")
+		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+		sb.WriteString("  ║                                       ║\n")
+	} else if s, ok := m.game.(*sudoku.Sudoku); ok {
+		title := "Game Over!"
+		if s.Won() {
+			title = "   You Win!  "
+		}
+		sb.WriteString("\n")
+		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+		sb.WriteString(fmt.Sprintf("  ║%37s║\n", title))
+		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+		sb.WriteString("  ║                                       ║\n")
+		minutes := int(s.GetElapsed().Seconds()) / 60
+		seconds := int(s.GetElapsed().Seconds()) % 60
+		sb.WriteString(fmt.Sprintf("  ║   Time: %02d:%02d                         ║\n", minutes, seconds))
+		sb.WriteString(fmt.Sprintf("  ║   Difficulty: %-19s║\n", m.sudokuOpts.difficulty.String()))
+	} else {
+		sb.WriteString("\n")
+		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+		sb.WriteString("  ║            Game Over!                 ║\n")
+		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+		sb.WriteString("  ║                                       ║\n")
 		sb.WriteString(fmt.Sprintf("  ║   Final Score: %-5d                 ║\n", m.game.GetScore()))
 		sb.WriteString(fmt.Sprintf("  ║   Level Reached: %-3d                ║\n", m.game.GetLevel()))
 		sb.WriteString(fmt.Sprintf("  ║   Lines Cleared: %-3d                ║\n", m.game.GetLines()))
