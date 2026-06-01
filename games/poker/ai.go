@@ -110,7 +110,7 @@ func preflopBucket(holeCards [2]cards.Card) bucket {
 		if ranks[0] >= int(cards.Jack) {
 			return bucketMedium
 		}
-		return bucketWeak
+		return bucketTrash
 	}
 	if holeCards[0].Suit == holeCards[1].Suit {
 		diff := ranks[0] - ranks[1]
