@@ -640,10 +640,12 @@ func (p *Poker) render() string {
 	if p.message != "" {
 		isWin := false
 		isLose := false
-		if strings.Contains(p.message, "wins") {
-			if strings.Contains(p.message, "YOU") {
-				isWin = true
-			}
+
+		if strings.Contains(p.message, "YOU") && strings.Contains(p.message, "wins") {
+			isWin = true
+		}
+		if strings.Contains(p.message, "wins") && strings.Contains(p.message, "AI") {
+			isLose = true
 		}
 		if p.phase == phaseGameOver {
 			isLose = true
