@@ -367,18 +367,7 @@ func (p *Poker) showdown() {
 	}
 	remainder := p.pot % len(winners)
 	if remainder > 0 {
-		for i := 0; i < len(p.players); i++ {
-			checkIdx := (p.dealer + 1 + i) % len(p.players)
-			for _, w := range winners {
-				if checkIdx == w {
-					p.players[checkIdx].chips += remainder
-					break
-				}
-			}
-			if p.players[checkIdx].chips > splitAmount {
-				break
-			}
-		}
+		p.players[winners[0]].chips += remainder
 	}
 	p.pot = 0
 
