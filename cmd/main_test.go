@@ -49,7 +49,8 @@ func newModel() *model {
 			startLevel int
 		}{ghost: false, startLevel: 0},
 		sudokuOpts: struct {
-			difficulty sudoku.Difficulty
+			difficulty   sudoku.Difficulty
+			highlightIdx int
 		}{},
 	}
 }

@@ -43,11 +43,11 @@ type HighlightOption struct {
 }
 
 var HighlightOptions = []HighlightOption{
-	{"Blue",  lipgloss.Color("#3A3A5A")},
+	{"Blue", lipgloss.Color("#3A3A5A")},
 	{"Green", lipgloss.Color("#1A4A2A")},
-	{"Red",   lipgloss.Color("#4A2020")},
-	{"Gray",  lipgloss.Color("#3A3A3A")},
-	{"None",  lipgloss.Color("")},
+	{"Red", lipgloss.Color("#4A2020")},
+	{"Gray", lipgloss.Color("#3A3A3A")},
+	{"None", lipgloss.Color("")},
 }
 
 func NewSudoku(diff Difficulty, highlightIdx int) *Sudoku {
@@ -145,11 +145,11 @@ func (s *Sudoku) pushUndo(row, col int) {
 	}
 	cell := &s.board.cells[row][col]
 	move := Move{
-		row:         row,
-		col:         col,
-		prevValue:   cell.value,
-		prevGiven:   cell.given,
-		prevPencil:  cell.pencilMarks,
+		row:        row,
+		col:        col,
+		prevValue:  cell.value,
+		prevGiven:  cell.given,
+		prevPencil: cell.pencilMarks,
 	}
 	s.undoStack = append(s.undoStack, move)
 }
@@ -225,15 +225,15 @@ func (s *Sudoku) checkWin() {
 	s.won = true
 }
 
-func (s *Sudoku) IsPaused() bool       { return s.isPaused }
-func (s *Sudoku) IsGameOver() bool      { return s.isGameOver }
-func (s *Sudoku) GetScore() int        { return s.score }
-func (s *Sudoku) GetLevel() int        { return int(s.difficulty) }
-func (s *Sudoku) GetLines() int        { return 0 }
-func (s *Sudoku) QuitRequested() bool   { return s.quitRequested }
-func (s *Sudoku) ClearQuitRequest()    { s.quitRequested = false }
+func (s *Sudoku) IsPaused() bool            { return s.isPaused }
+func (s *Sudoku) IsGameOver() bool          { return s.isGameOver }
+func (s *Sudoku) GetScore() int             { return s.score }
+func (s *Sudoku) GetLevel() int             { return int(s.difficulty) }
+func (s *Sudoku) GetLines() int             { return 0 }
+func (s *Sudoku) QuitRequested() bool       { return s.quitRequested }
+func (s *Sudoku) ClearQuitRequest()         { s.quitRequested = false }
 func (s *Sudoku) GetElapsed() time.Duration { return s.elapsed }
-func (s *Sudoku) Won() bool            { return s.won }
+func (s *Sudoku) Won() bool                 { return s.won }
 func (s *Sudoku) Resume() {
 	if s.isPaused {
 		s.totalPaused += time.Since(s.pausedAt)
@@ -257,11 +257,11 @@ var digitColors = [9]lipgloss.Color{
 }
 
 var (
-	cursorStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#333333"))
-	pencilMarkStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	givenStyle          = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
-	completedColor      = lipgloss.Color("#5A5A5A")
-	matchHighlightBg    = lipgloss.NewStyle().Background(lipgloss.Color("#3A3300"))
+	cursorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Background(lipgloss.Color("#333333"))
+	pencilMarkStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	givenStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
+	completedColor   = lipgloss.Color("#5A5A5A")
+	matchHighlightBg = lipgloss.NewStyle().Background(lipgloss.Color("#3A3300"))
 )
 
 func (s *Sudoku) Render() string {
@@ -334,15 +334,15 @@ func (s *Sudoku) renderCell(b *strings.Builder, cell *Cell, isCursor, isHighligh
 			b.WriteString(cursorStyle.Render(fmt.Sprintf("%2d", cell.value)))
 		} else if isMatchingDigit {
 			if cell.given {
-				b.WriteString(matchHighlightBg.Copy().Foreground(lipgloss.Color("#FFFFFF")).Bold(true).Render(fmt.Sprintf("%2d", cell.value)))
+				b.WriteString(matchHighlightBg.Foreground(lipgloss.Color("#FFFFFF")).Bold(true).Render(fmt.Sprintf("%2d", cell.value)))
 			} else {
-				b.WriteString(matchHighlightBg.Copy().Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
+				b.WriteString(matchHighlightBg.Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
 			}
 		} else if isHighlighted {
 			if cell.given {
-				b.WriteString(s.highlightBg.Copy().Foreground(lipgloss.Color("#FFFFFF")).Bold(true).Render(fmt.Sprintf("%2d", cell.value)))
+				b.WriteString(s.highlightBg.Foreground(lipgloss.Color("#FFFFFF")).Bold(true).Render(fmt.Sprintf("%2d", cell.value)))
 			} else {
-				b.WriteString(s.highlightBg.Copy().Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
+				b.WriteString(s.highlightBg.Foreground(color).Render(fmt.Sprintf("%2d", cell.value)))
 			}
 		} else {
 			if cell.given {
@@ -374,7 +374,7 @@ func (s *Sudoku) renderPencilMarks(b *strings.Builder, cell *Cell, isCursor bool
 			b.WriteString(bgStyle.Render(content))
 		}
 	} else if isHighlighted {
-		b.WriteString(s.highlightBg.Copy().Foreground(lipgloss.Color("#888888")).Render(fmt.Sprintf("%-2s", content)))
+		b.WriteString(s.highlightBg.Foreground(lipgloss.Color("#888888")).Render(fmt.Sprintf("%-2s", content)))
 	} else {
 		b.WriteString(pencilMarkStyle.Render(fmt.Sprintf("%-2s", content)))
 	}
