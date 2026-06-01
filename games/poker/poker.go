@@ -468,12 +468,9 @@ func (p *Poker) HandleInput(key string) {
 			p.applyAction(d)
 		}
 	case "r":
-		if p.players[0].chips > p.toCall {
+		if p.players[0].chips >= p.toCall+p.minRaise {
 			p.raiseMode = true
 			p.raiseAmount = p.toCall + p.minRaise
-			if p.raiseAmount > p.players[0].chips {
-				p.raiseAmount = p.players[0].chips
-			}
 		}
 	case "a":
 		if p.players[0].chips > 0 {
