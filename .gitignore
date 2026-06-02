@@ -15,3 +15,5 @@ main
 .opencode/
 config.yaml
 .worktrees/
+.claude/worktrees/
+.beads/interactions.jsonl
