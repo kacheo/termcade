@@ -85,3 +85,75 @@ func TestPokerImplementsCoreGameInterface(t *testing.T) {
 	p := NewPoker(3, Easy)
 	var _ core.Game = p
 }
+
+func TestBettingRoundNotEndedUntilBBActsPreflop(t *testing.T) {
+	p := NewPoker(3, Easy)
+	for i := range p.players {
+		p.players[i].chips = 980
+		p.players[i].bet = 20
+		p.players[i].folded = false
+		p.players[i].allIn = false
+	}
+	p.players[0].acted = true
+	p.players[1].acted = true
+	p.players[2].acted = false
+	p.toCall = 20
+	p.action = 2
+	if p.bettingRoundEnded() {
+		t.Error("bettingRoundEnded should return false when BB has not acted yet")
+	}
+	p.players[2].acted = true
+	if !p.bettingRoundEnded() {
+		t.Error("bettingRoundEnded should return true after BB acts")
+	}
+}
+
+func TestEndBettingRoundOnRiverDistributesPot(t *testing.T) {
+	p := NewPoker(3, Easy)
+	for i := range p.players {
+		p.players[i].chips = 1000
+		p.players[i].acted = true
+		p.players[i].folded = false
+		p.players[i].allIn = false
+		p.players[i].bet = 0
+	}
+	p.pot = 150
+	p.phase = phaseRiver
+	p.community = make([]cards.Card, 5)
+	p.endBettingRound()
+	if p.pot != 0 {
+		t.Errorf("pot should be 0 after river endBettingRound, got %d", p.pot)
+	}
+	total := 0
+	for _, pl := range p.players {
+		total += pl.chips
+	}
+	if total != 3150 {
+		t.Errorf("total chips should equal 3150 after pot distribution, got %d", total)
+	}
+}
+
+func TestEndBettingRoundWithOnlyOneRemainingGoesToShowdown(t *testing.T) {
+	p := NewPoker(3, Easy)
+	for i := range p.players {
+		p.players[i].chips = 1000
+	}
+	p.pot = 80
+	p.phase = phasePreflop
+	p.community = make([]cards.Card, 5)
+	p.players[0].folded = false
+	p.players[0].acted = true
+	p.players[0].bet = 0
+	p.players[1].folded = true
+	p.players[2].folded = true
+	p.endBettingRound()
+	if p.phase != phaseShowdown {
+		t.Errorf("phase should be phaseShowdown when 1 player remains, got %v", p.phase)
+	}
+	if p.pot != 0 {
+		t.Errorf("pot should be 0 after showdown, got %d", p.pot)
+	}
+	if p.players[0].chips != 1080 {
+		t.Errorf("last standing player should win pot (1080), got %d chips", p.players[0].chips)
+	}
+}

@@ -29,6 +29,7 @@ type player struct {
 	folded  bool
 	allIn   bool
 	isHuman bool
+	acted   bool
 }
 
 type Poker struct {
@@ -112,6 +113,7 @@ func (p *Poker) startHand() {
 		p.players[i].bet = 0
 		p.players[i].folded = false
 		p.players[i].allIn = false
+		p.players[i].acted = false
 	}
 	p.pot = 0
 	smallBlindIdx := (p.dealer + 1) % len(p.players)
@@ -173,14 +175,8 @@ func (p *Poker) allActed() bool {
 }
 
 func (p *Poker) bettingRoundEnded() bool {
-	if p.lastRaiser == -1 {
-		return p.allActed()
-	}
-	if p.action != p.lastRaiser {
-		return false
-	}
 	for _, pl := range p.players {
-		if !pl.folded && !pl.allIn && pl.bet < p.toCall {
+		if !pl.folded && !pl.allIn && (!pl.acted || pl.bet < p.toCall) {
 			return false
 		}
 	}
@@ -264,6 +260,7 @@ func (p *Poker) applyAction(d Decision) {
 			}
 			p.lastRaiser = p.action
 			p.message = fmt.Sprintf("%s is all-in!", p.players[p.action].name)
+			p.players[p.action].acted = true
 			p.advanceToNextPlayer()
 			p.aiDelay = 0
 			return
@@ -300,6 +297,7 @@ func (p *Poker) applyAction(d Decision) {
 		}
 		p.message = fmt.Sprintf("%s is all-in!", p.players[p.action].name)
 	}
+	p.players[p.action].acted = true
 	p.advanceToNextPlayer()
 	p.aiDelay = 0
 }
@@ -307,10 +305,23 @@ func (p *Poker) applyAction(d Decision) {
 func (p *Poker) endBettingRound() {
 	for i := range p.players {
 		p.players[i].bet = 0
+		p.players[i].acted = false
 	}
 	p.toCall = 0
 	p.minRaise = 20
 	p.lastRaiser = -1
+	remaining := 0
+	for _, pl := range p.players {
+		if !pl.folded {
+			remaining++
+		}
+	}
+	if remaining <= 1 {
+		p.phase = phaseShowdown
+		p.elapsed = 0
+		p.showdown()
+		return
+	}
 	switch p.phase {
 	case phasePreflop:
 		p.phase = phaseFlop
@@ -324,6 +335,8 @@ func (p *Poker) endBettingRound() {
 	case phaseRiver:
 		p.phase = phaseShowdown
 		p.elapsed = 0
+		p.showdown()
+		return
 	}
 	start := (p.dealer + 1) % len(p.players)
 	p.action = start
