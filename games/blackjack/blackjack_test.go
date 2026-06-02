@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	cardpkg "tmvgs/games/cards"
 )
 
 func TestNewBlackjack_Metadata(t *testing.T) {
@@ -43,7 +45,7 @@ func TestInitialDeal(t *testing.T) {
 
 func TestPhase_DealingToTurn(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16, not BJ
+	g.player.hand = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Six, cardpkg.Hearts}} // 16, not BJ
 	g.player.status = statusPlaying
 	g.Update(dealDelay + time.Millisecond)
 	if g.phase != phaseTurn {
@@ -53,7 +55,7 @@ func TestPhase_DealingToTurn(t *testing.T) {
 
 func TestPhase_DealingToDealer_OnBlackjack(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ace, Spades}, {King, Hearts}} // blackjack
+	g.player.hand = Hand{{cardpkg.Ace, cardpkg.Spades}, {cardpkg.King, cardpkg.Hearts}} // blackjack
 	g.player.status = statusBlackjack
 	g.Update(dealDelay + time.Millisecond)
 	if g.phase != phaseDealerTurn {
@@ -63,8 +65,8 @@ func TestPhase_DealingToDealer_OnBlackjack(t *testing.T) {
 
 func TestEvaluate_PlayerWinsVsBustedDealer(t *testing.T) {
 	g := NewBlackjack()
-	g.dealer = Hand{{Ten, Spades}, {Six, Hearts}, {Seven, Clubs}} // 23
-	g.player.hand = Hand{{King, Spades}, {Eight, Hearts}}         // 18
+	g.dealer = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Six, cardpkg.Hearts}, {cardpkg.Seven, cardpkg.Clubs}} // 23
+	g.player.hand = Hand{{cardpkg.King, cardpkg.Spades}, {cardpkg.Eight, cardpkg.Hearts}}         // 18
 	g.player.status = statusStand
 	g.evaluateResults()
 	if g.player.result != "WIN" {
@@ -77,8 +79,8 @@ func TestEvaluate_PlayerWinsVsBustedDealer(t *testing.T) {
 
 func TestEvaluate_DealerWins(t *testing.T) {
 	g := NewBlackjack()
-	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}
-	g.player.hand = Hand{{King, Spades}, {Eight, Hearts}} // 18 vs 19
+	g.dealer = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Nine, cardpkg.Hearts}}
+	g.player.hand = Hand{{cardpkg.King, cardpkg.Spades}, {cardpkg.Eight, cardpkg.Hearts}} // 18 vs 19
 	g.player.status = statusStand
 	g.evaluateResults()
 	if g.player.result != "LOSE" {
@@ -88,8 +90,8 @@ func TestEvaluate_DealerWins(t *testing.T) {
 
 func TestEvaluate_Push(t *testing.T) {
 	g := NewBlackjack()
-	g.dealer = Hand{{Ten, Spades}, {Nine, Hearts}}
-	g.player.hand = Hand{{King, Spades}, {Nine, Clubs}} // 19 vs 19
+	g.dealer = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Nine, cardpkg.Hearts}}
+	g.player.hand = Hand{{cardpkg.King, cardpkg.Spades}, {cardpkg.Nine, cardpkg.Clubs}} // 19 vs 19
 	g.player.status = statusStand
 	g.evaluateResults()
 	if g.player.result != "PUSH" {
@@ -99,7 +101,7 @@ func TestEvaluate_Push(t *testing.T) {
 
 func TestEvaluate_BustLoses(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}, {Eight, Clubs}} // 24
+	g.player.hand = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Six, cardpkg.Hearts}, {cardpkg.Eight, cardpkg.Clubs}} // 24
 	g.player.status = statusBust
 	g.evaluateResults()
 	if g.player.result != "LOSE" {
@@ -109,7 +111,7 @@ func TestEvaluate_BustLoses(t *testing.T) {
 
 func TestHandleInput_HitDrawsCard(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16
+	g.player.hand = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Six, cardpkg.Hearts}} // 16
 	g.player.status = statusPlaying
 	g.phase = phaseTurn
 	before := len(g.player.hand)
@@ -121,10 +123,10 @@ func TestHandleInput_HitDrawsCard(t *testing.T) {
 
 func TestHandleInput_HitBust_GoesToDealer(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ten, Spades}, {Nine, Hearts}} // 19
+	g.player.hand = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Nine, cardpkg.Hearts}} // 19
 	g.player.status = statusPlaying
 	g.phase = phaseTurn
-	g.deck = append(Deck{Card{Five, Clubs}}, g.deck...) // 19+5=24, bust
+	g.deck = append(cardpkg.Deck{cardpkg.Card{cardpkg.Five, cardpkg.Clubs}}, g.deck...) // 19+5=24, bust
 	g.HandleInput("h")
 	if g.player.status != statusBust {
 		t.Errorf("status = %v, want statusBust", g.player.status)
@@ -136,7 +138,7 @@ func TestHandleInput_HitBust_GoesToDealer(t *testing.T) {
 
 func TestHandleInput_Stand_GoesToDealer(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}} // 16
+	g.player.hand = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Six, cardpkg.Hearts}} // 16
 	g.player.status = statusPlaying
 	g.phase = phaseTurn
 	g.HandleInput("s")
@@ -195,7 +197,7 @@ func TestRender_ResultsPhaseShowsPromptAndResult(t *testing.T) {
 
 func TestRender_PlayerTurnShowsActions(t *testing.T) {
 	g := NewBlackjack()
-	g.player.hand = Hand{{Ten, Spades}, {Six, Hearts}}
+	g.player.hand = Hand{{cardpkg.Ten, cardpkg.Spades}, {cardpkg.Six, cardpkg.Hearts}}
 	g.player.status = statusPlaying
 	g.phase = phaseTurn
 	out := g.Render()

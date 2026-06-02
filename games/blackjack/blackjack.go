@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	cxansi "github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mattn/go-runewidth"
+
+	cardpkg "tmvgs/games/cards"
 )
 
 type phase int
@@ -38,7 +38,7 @@ type tablePlayer struct {
 
 type Blackjack struct {
 	rng     *rand.Rand
-	deck    Deck
+	deck    cardpkg.Deck
 	dealer  Hand
 	player  tablePlayer
 	phase   phase
@@ -59,7 +59,7 @@ func NewBlackjack() *Blackjack {
 }
 
 func (b *Blackjack) startRound() {
-	b.deck = NewDeck().Shuffled(b.rng)
+	b.deck = cardpkg.NewDeck().Shuffled(b.rng)
 	b.dealer = Hand{}
 	b.player = tablePlayer{name: "YOU"}
 	for i := 0; i < 2; i++ {
@@ -192,12 +192,8 @@ var (
 
 const bjInnerWidth = 46
 
-func bjRenderCard(c Card) string {
-	s := fmt.Sprintf("[%s%s]", c.Symbol(), c.SuitSymbol())
-	if c.IsRed() {
-		return bjRedCardSty.Render(s)
-	}
-	return bjWhiteCardSty.Render(s)
+func bjRenderCard(c cardpkg.Card) string {
+	return cardpkg.RenderCard(c, bjRedCardSty, bjWhiteCardSty)
 }
 
 func bjRenderHidden() string { return bjHiddenSty.Render("[??]") }
@@ -213,61 +209,31 @@ func bjRenderHandMasked(hand Hand, revealed bool) (string, string) {
 	for range hand[1:] {
 		cards += " " + bjRenderHidden()
 	}
-	showing := hand[0].BaseValue()
-	if hand[0].Rank == Ace {
+	showing := int(hand[0].Rank)
+	if hand[0].Rank >= cardpkg.Ten {
+		showing = 10
+	} else if hand[0].Rank == cardpkg.Ace {
 		showing = 11
 	}
 	return cards, bjLabelSty.Render(fmt.Sprintf(" (%d+?)", showing))
 }
 
 func bjRenderHand(hand Hand) string {
-	parts := make([]string, len(hand))
-	for i, c := range hand {
-		parts[i] = bjRenderCard(c)
-	}
-	return strings.Join(parts, " ")
+	return cardpkg.RenderHand(hand[:], bjRedCardSty, bjWhiteCardSty)
 }
 
 // bjRenderHandBudget renders as many cards as fit in maxWidth visible chars,
 // appending "…" if cards are truncated.
 func bjRenderHandBudget(hand Hand, maxWidth int) string {
-	ellipsis := bjLabelSty.Render("…")
-	var parts []string
-	used := 0
-	for _, c := range hand {
-		sep := 0
-		if len(parts) > 0 {
-			sep = 1
-		}
-		rendered := bjRenderCard(c)
-		w := lipgloss.Width(rendered)
-		if used+sep+w > maxWidth {
-			if len(parts) > 0 {
-				parts = append(parts, ellipsis)
-			}
-			break
-		}
-		used += sep + w
-		parts = append(parts, rendered)
-	}
-	return strings.Join(parts, " ")
+	return cardpkg.RenderHandBudget(hand[:], maxWidth, bjRedCardSty, bjWhiteCardSty)
 }
 
 func bjPad(s string, width int) string {
-	vis := runewidth.StringWidth(cxansi.Strip(s))
-	if vis >= width {
-		return s
-	}
-	return s + strings.Repeat(" ", width-vis)
+	return cardpkg.Pad(s, width)
 }
 
 func bjCenter(s string, width int) string {
-	vis := runewidth.StringWidth(cxansi.Strip(s))
-	if vis >= width {
-		return s
-	}
-	l := (width - vis) / 2
-	return strings.Repeat(" ", l) + s + strings.Repeat(" ", width-vis-l)
+	return cardpkg.Center(s, width)
 }
 
 func (b *Blackjack) Render() string {

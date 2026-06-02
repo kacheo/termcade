@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"tmvgs/core"
 	"tmvgs/games/blackjack"
+	"tmvgs/games/poker"
 	"tmvgs/games/snake"
 	"tmvgs/games/sudoku"
 	"tmvgs/games/tetris"
@@ -27,6 +28,7 @@ const (
 	menuSnakeOptions
 	menuSudokuOptions
 	menuBlackjackOptions
+	menuPokerOptions
 	menuPlaying
 	menuPause
 	menuGameOver
@@ -39,6 +41,7 @@ const (
 	gameKindSnake
 	gameKindSudoku
 	gameKindBlackjack
+	gameKindPoker
 )
 
 type model struct {
@@ -55,6 +58,10 @@ type model struct {
 	sudokuOpts struct {
 		difficulty   sudoku.Difficulty
 		highlightIdx int
+	}
+	pokerOpts struct {
+		seats      int
+		difficulty int
 	}
 }
 
@@ -97,6 +104,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSudokuOptions(msg)
 		case menuBlackjackOptions:
 			return m.updateBlackjackOptions(msg)
+		case menuPokerOptions:
+			return m.updatePokerOptions(msg)
 		case menuPlaying:
 			return m.updateGame(msg)
 		case menuPause:
@@ -109,7 +118,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "Play Poker", "", "Quit"}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
@@ -133,7 +142,10 @@ func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 3:
 			m.currentMenu = menuBlackjackOptions
 			m.selected = 0
-		case 5:
+		case 4:
+			m.currentMenu = menuPokerOptions
+			m.selected = 0
+		case 6:
 			return m, tea.Quit
 		}
 	}
@@ -290,6 +302,52 @@ func (m *model) updateBlackjackOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) updatePokerOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.pokerOpts.seats == 0 {
+		m.pokerOpts.seats = 4
+	}
+	switch msg.String() {
+	case "up", "k":
+		if m.selected > 0 {
+			m.selected--
+		}
+	case "down", "j":
+		if m.selected < 3 {
+			m.selected++
+		}
+	case "left", "h":
+		if m.selected == 0 && m.pokerOpts.seats > 3 {
+			m.pokerOpts.seats--
+		}
+		if m.selected == 1 && m.pokerOpts.difficulty > 0 {
+			m.pokerOpts.difficulty--
+		}
+	case "right", "l":
+		if m.selected == 0 && m.pokerOpts.seats < 5 {
+			m.pokerOpts.seats++
+		}
+		if m.selected == 1 && m.pokerOpts.difficulty < 2 {
+			m.pokerOpts.difficulty++
+		}
+	case "enter", " ":
+		switch m.selected {
+		case 2:
+			m.game = poker.NewPoker(m.pokerOpts.seats, poker.Difficulty(m.pokerOpts.difficulty))
+			m.activeGame = gameKindPoker
+			m.currentMenu = menuPlaying
+			m.gameOver = false
+			m.selected = 0
+		case 3:
+			m.currentMenu = menuMain
+			m.selected = 0
+		}
+	case "q":
+		m.currentMenu = menuMain
+		m.selected = 0
+	}
+	return m, nil
+}
+
 func (m *model) restartGame() {
 	switch m.activeGame {
 	case gameKindTetris:
@@ -300,6 +358,8 @@ func (m *model) restartGame() {
 		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
 	case gameKindBlackjack:
 		m.game = blackjack.NewBlackjack()
+	case gameKindPoker:
+		m.game = poker.NewPoker(m.pokerOpts.seats, poker.Difficulty(m.pokerOpts.difficulty))
 	}
 }
 
@@ -428,6 +488,8 @@ func (m *model) View() string {
 		return m.renderSudokuOptions()
 	case menuBlackjackOptions:
 		return m.renderBlackjackOptions()
+	case menuPokerOptions:
+		return m.renderPokerOptions()
 	case menuPlaying:
 		return m.renderGame()
 	case menuPause:
@@ -439,7 +501,7 @@ func (m *model) View() string {
 }
 
 func (m *model) renderMainMenu() string {
-	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "Play Poker", "", "Quit"}
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
@@ -603,6 +665,57 @@ func (m *model) renderBlackjackOptions() string {
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
 	sb.WriteString("    ↑↓ Navigate   Enter Select\n")
+	return sb.String()
+}
+
+func (m *model) renderPokerOptions() string {
+	seatsText := fmt.Sprintf("%d", m.pokerOpts.seats)
+	diffText := "Medium"
+	switch m.pokerOpts.difficulty {
+	case 0:
+		diffText = "Easy"
+	case 2:
+		diffText = "Hard"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("\n")
+	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
+	sb.WriteString("  ║        Poker — Options                ║\n")
+	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
+	sb.WriteString("  ║                                       ║\n")
+
+	hlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
+
+	seatsStr := fmt.Sprintf("  ║   Seats        [ %s ]  ◀ ▶           ║", seatsText)
+	if m.selected == 0 {
+		seatsStr = fmt.Sprintf("  ║  ▶ Seats        [ %s ]  ◀ ▶           ║", seatsText)
+		seatsStr = hlStyle.Render(seatsStr)
+	}
+	sb.WriteString(seatsStr + "\n")
+
+	diffStr := fmt.Sprintf("  ║   Difficulty   [ %-8s ]          ║", diffText)
+	if m.selected == 1 {
+		diffStr = fmt.Sprintf("  ║  ▶ Difficulty   [ %-8s ]          ║", diffText)
+		diffStr = hlStyle.Render(diffStr)
+	}
+	sb.WriteString(diffStr + "\n")
+
+	sb.WriteString("  ║                                       ║\n")
+	if m.selected == 2 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+	} else {
+		sb.WriteString("  ║    Start Game                        ║\n")
+	}
+	if m.selected == 3 {
+		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+	} else {
+		sb.WriteString("  ║    Back                             ║\n")
+	}
+
+	sb.WriteString("  ║                                       ║\n")
+	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
+	sb.WriteString("    ←→ Change   ↑↓ Select   Enter Confirm   Q Back\n")
 	return sb.String()
 }
 
