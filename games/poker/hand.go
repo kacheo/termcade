@@ -77,19 +77,6 @@ func Compare(a, b EvaluatedHand) int {
 	return 0
 }
 
-func compareRanks(a, b EvaluatedHand) int {
-	if a.Rank == 0 && b.Rank == 0 {
-		return 0
-	}
-	if a.Rank == 0 {
-		return -1
-	}
-	if b.Rank == 0 {
-		return 1
-	}
-	return Compare(a, b)
-}
-
 func evaluateFive(cardList []cards.Card) EvaluatedHand {
 	sorted := make([]cards.Card, len(cardList))
 	copy(sorted, cardList)
@@ -141,10 +128,11 @@ func evaluateFive(cardList []cards.Card) EvaluatedHand {
 	threes := 0
 	pairs := 0
 	for rank, count := range counts {
-		if count == 3 {
+		switch count {
+		case 3:
 			three = rank
 			threes++
-		} else if count == 2 {
+		case 2:
 			if pairs == 0 {
 				pair1 = rank
 			} else {

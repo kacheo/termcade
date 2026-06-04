@@ -25,17 +25,12 @@ type Tetris struct {
 	paused      bool
 	lastDrop    time.Time
 	lockTimer   time.Time
-	lockStart   time.Time
 	onGround    bool
 	ghost       bool
 	startLevel  int
 	lastRotate  bool
 	combo       int
 	backToBack  int
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
 }
 
 func NewTetris(ghost bool, startLevel int) *Tetris {

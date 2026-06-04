@@ -47,7 +47,9 @@ func TestPhase_DealingToTurn(t *testing.T) {
 	g := NewBlackjack()
 	g.player.hand = Hand{cardpkg.Card{Rank: cardpkg.Ten, Suit: cardpkg.Spades}, cardpkg.Card{Rank: cardpkg.Six, Suit: cardpkg.Hearts}} // 16, not BJ
 	g.player.status = statusPlaying
-	g.Update(dealDelay + time.Millisecond)
+	if err := g.Update(dealDelay + time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
 	if g.phase != phaseTurn {
 		t.Errorf("expected phaseTurn, got %v", g.phase)
 	}
@@ -57,7 +59,9 @@ func TestPhase_DealingToDealer_OnBlackjack(t *testing.T) {
 	g := NewBlackjack()
 	g.player.hand = Hand{cardpkg.Card{Rank: cardpkg.Ace, Suit: cardpkg.Spades}, cardpkg.Card{Rank: cardpkg.King, Suit: cardpkg.Hearts}} // blackjack
 	g.player.status = statusBlackjack
-	g.Update(dealDelay + time.Millisecond)
+	if err := g.Update(dealDelay + time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
 	if g.phase != phaseDealerTurn {
 		t.Errorf("expected phaseDealerTurn on blackjack, got %v", g.phase)
 	}

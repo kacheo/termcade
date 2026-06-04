@@ -59,10 +59,6 @@ func keyMsg(k string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k), Alt: false}
 }
 
-func specialKey(t tea.KeyType) tea.KeyMsg {
-	return tea.KeyMsg{Type: t}
-}
-
 // ---- convertKey -------------------------------------------------------------
 
 func TestConvertKey(t *testing.T) {

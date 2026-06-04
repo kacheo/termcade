@@ -120,12 +120,16 @@ func TestUndoStackLimit(t *testing.T) {
 func TestTimerPaused(t *testing.T) {
 	game := NewSudoku(DifficultyEasy, 4)
 	game.startTime = time.Now().Add(-10 * time.Second)
-	game.Update(0)
+	if err := game.Update(0); err != nil {
+		t.Fatal(err)
+	}
 	elapsedBeforePause := game.elapsed
 	game.isPaused = true
 	game.pausedAt = time.Now()
 	time.Sleep(10 * time.Millisecond)
-	game.Update(0)
+	if err := game.Update(0); err != nil {
+		t.Fatal(err)
+	}
 	if game.elapsed != elapsedBeforePause {
 		t.Error("elapsed should not increase while paused")
 	}
