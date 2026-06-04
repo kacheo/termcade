@@ -90,14 +90,15 @@ func TestScenarioSnakeWallCollision(t *testing.T) {
 	s := NewSnake()
 	s.food = core.Position{X: -1, Y: -1}
 
-	// Snake starts at (10,10) moving right; pressing "left" is the reverse
-	// direction and is blocked, so the snake continues right.
-	// From X=10, 9 steps reach X=19 (right edge); the 10th step would move to
-	// X=20 which is out of bounds — game over.
+	// Snake starts at (BoardWidth/2, BoardHeight/2) moving right; pressing "left"
+	// is the reverse direction and is blocked, so the snake continues right.
+	// steps to reach right edge = (BoardWidth-1) - BoardWidth/2 = 9.
+	// The subsequent step moves to X=BoardWidth which is out of bounds — game over.
 	s.HandleInput("left") // ignored: reverse of right
 
-	// 9 steps should NOT trigger game over.
-	for i := 0; i < 9; i++ {
+	steps := (BoardWidth - 1) - BoardWidth/2
+	// All steps before the wall should NOT trigger game over.
+	for i := 0; i < steps; i++ {
 		if err := s.Update(200 * time.Millisecond); err != nil {
 			t.Fatal(err)
 		}

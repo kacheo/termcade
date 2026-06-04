@@ -22,19 +22,19 @@ func CheckGolden(t *testing.T, name, got string) {
 	if *update {
 		// Create testdata directory if it doesn't exist
 		testdataDir := filepath.Dir(goldenPath)
-		if err := os.MkdirAll(testdataDir, 0o755); err != nil {
+		if err := os.MkdirAll(testdataDir, 0o750); err != nil {
 			t.Fatalf("failed to create testdata directory: %v", err)
 		}
 
 		// Write the golden file
-		if err := os.WriteFile(goldenPath, []byte(got), 0o644); err != nil {
+		if err := os.WriteFile(goldenPath, []byte(got), 0o600); err != nil {
 			t.Fatalf("failed to write golden file: %v", err)
 		}
 		return
 	}
 
 	// Read the golden file
-	want, err := os.ReadFile(goldenPath)
+	want, err := os.ReadFile(goldenPath) //nolint:gosec // path is constructed from test names, not user input
 	if err != nil {
 		if os.IsNotExist(err) {
 			t.Fatalf("golden file not found: %s\nrun with -update to create", goldenPath)

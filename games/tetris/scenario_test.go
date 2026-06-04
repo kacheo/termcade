@@ -138,7 +138,8 @@ func TestScenarioTetrisMoveAndRotate(t *testing.T) {
 func TestScenarioTetrisGameOverOnFill(t *testing.T) {
 	g := NewTetris(false, 0)
 
-	// Override the RNG to always supply I pieces so the board fills predictably.
+	// Seed the first bag with I pieces; after 7 drops the bag reshuffles randomly
+	// but 300 drops is more than enough to fill any board regardless of sequence.
 	g.rng = []byte{'I', 'I', 'I', 'I', 'I', 'I', 'I'}
 	g.rngIndex = 0
 

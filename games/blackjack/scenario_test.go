@@ -12,11 +12,6 @@ func makeDeck(cards ...cardpkg.Card) cardpkg.Deck {
 	return cardpkg.Deck(cards)
 }
 
-// advancePastDealing advances time past the deal animation.
-func advancePastDealing(b *Blackjack) {
-	b.Update(time.Second) //nolint:errcheck
-}
-
 // advancePastDealerTurn advances time enough for the dealer to finish all steps.
 // Each dealer action requires dealerDelay (700ms). We call Update several times
 // to ensure the dealer finishes regardless of how many hits they need.

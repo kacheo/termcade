@@ -213,3 +213,33 @@ func TestScenarioPauseResume(t *testing.T) {
 		t.Error("game should not be paused after calling Resume()")
 	}
 }
+
+// TestScenarioUndoPencilMark verifies that placing a pencil mark and then
+// pressing undo clears the mark. This is the exact regression from PR #12.
+func TestScenarioUndoPencilMark(t *testing.T) {
+	s := NewSudoku(DifficultyEasy, 0)
+	row, col, found := findEmptyCell(s)
+	if !found {
+		t.Fatal("no empty cell found to test pencil mark undo")
+	}
+	s.cursorRow = row
+	s.cursorCol = col
+
+	// Enable pencil mode and place a mark
+	s.HandleInput(" ") // toggle pencil mode on
+	if !s.pencilMode {
+		t.Fatal("pencil mode did not toggle on")
+	}
+	s.HandleInput("3") // place pencil mark for digit 3 (index 2)
+
+	cell := &s.board.cells[row][col]
+	if !cell.pencilMarks[2] {
+		t.Fatalf("pencilMarks[2] should be true after placing mark, got false")
+	}
+
+	// Undo should clear the pencil mark
+	s.HandleInput("u")
+	if cell.pencilMarks[2] {
+		t.Errorf("pencilMarks[2] should be false after undo, got true (pencil-mark undo regression)")
+	}
+}
