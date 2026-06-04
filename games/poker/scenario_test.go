@@ -112,10 +112,16 @@ func TestScenarioCallCheck(t *testing.T) {
 
 		driveToCompletion(g, 1000)
 
-		// If the game has not ended a hand must have advanced past preflop
-		// or the game must be over.
-		if !g.gameOver && g.handsPlayed == 0 && g.phase == preflopPhase {
-			t.Log("note: still on preflop — may be normal if human has more to act")
+		// Drive to next human turn so AI actions can complete the round.
+		driveToHumanTurn(g, 500)
+
+		// Assert that the game has made progress: either the phase advanced,
+		// a hand completed, or the game is over.
+		phaseAdvanced := g.phase != preflopPhase
+		handCompleted := g.handsPlayed > 0
+		if !phaseAdvanced && !handCompleted && !g.gameOver {
+			t.Errorf("after call and AI turns: no progress made: phase=%v handsPlayed=%d gameOver=%v",
+				g.phase, g.handsPlayed, g.gameOver)
 		}
 	})
 }
@@ -158,7 +164,7 @@ func TestScenarioPotAwardedAfterFold(t *testing.T) {
 
 	if !driveToHumanTurn(g, 500) {
 		if g.gameOver {
-			t.Skip("game ended during setup; skipping pot-award test")
+			t.Fatal("game over during setup in 2-seat game — check NewPoker construction")
 		}
 		t.Fatal("game stuck before human's first turn (pot-award scenario)")
 	}
