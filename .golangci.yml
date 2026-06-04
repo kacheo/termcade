@@ -27,6 +27,9 @@ linters:
       # G204: exec.Command with variable args in tests is not untrusted input.
       - linters: [gosec]
         text: "G204:"
+      # G404: game randomness doesn't require crypto-strength RNG.
+      - linters: [gosec]
+        text: "G404:"
       # Test files: permission values in temp dirs and unhandled test writes are not a security concern.
       - path: _test\.go
         linters: [gosec]

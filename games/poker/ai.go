@@ -2,7 +2,6 @@ package poker
 
 import (
 	"math/rand"
-	"sort"
 
 	"tmvgs/games/cards"
 )
@@ -246,11 +245,3 @@ func bucketEquity(b bucket) float64 {
 	return 0.15
 }
 
-func sortCardsByRank(cardList []cards.Card) []cards.Card {
-	sorted := make([]cards.Card, len(cardList))
-	copy(sorted, cardList)
-	sort.Slice(sorted, func(i, j int) bool {
-		return highCardRank(sorted[i].Rank) > highCardRank(sorted[j].Rank)
-	})
-	return sorted
-}

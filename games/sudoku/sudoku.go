@@ -304,7 +304,7 @@ func (s *Sudoku) Render() string {
 	if s.pencilMode {
 		mode = "Pencil"
 	}
-	b.WriteString(fmt.Sprintf("  Mode: [%s]   [↑↓←→] Move  [1-9] Enter  [Space] Pencil  [U] Undo  [P] Pause  [H] Match\n", mode))
+	fmt.Fprintf(&b, "  Mode: [%s]   [↑↓←→] Move  [1-9] Enter  [Space] Pencil  [U] Undo  [P] Pause  [H] Match\n", mode)
 	if s.quitRequested {
 		b.WriteString("  *** Press Esc again to quit, or any other key to cancel ***\n")
 	}

@@ -155,17 +155,19 @@ func (m *model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateTetrisOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "left", "h":
-		if m.selected == 0 {
+		switch m.selected {
+		case 0:
 			m.tetrisOpts.ghost = false
-		} else if m.selected == 1 {
+		case 1:
 			if m.tetrisOpts.startLevel > 0 {
 				m.tetrisOpts.startLevel--
 			}
 		}
 	case "right", "l":
-		if m.selected == 0 {
+		switch m.selected {
+		case 0:
 			m.tetrisOpts.ghost = true
-		} else if m.selected == 1 {
+		case 1:
 			if m.tetrisOpts.startLevel < 9 {
 				m.tetrisOpts.startLevel++
 			}
@@ -179,13 +181,14 @@ func (m *model) updateTetrisOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selected++
 		}
 	case "enter", " ":
-		if m.selected == 2 {
+		switch m.selected {
+		case 2:
 			m.game = tetris.NewTetris(m.tetrisOpts.ghost, m.tetrisOpts.startLevel)
 			m.activeGame = gameKindTetris
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
-		} else if m.selected == 3 {
+		case 3:
 			m.currentMenu = menuMain
 			m.selected = 0
 		}
@@ -208,13 +211,14 @@ func (m *model) updateSnakeOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selected++
 		}
 	case "enter", " ":
-		if m.selected == 0 {
+		switch m.selected {
+		case 0:
 			m.game = snake.NewSnake()
 			m.activeGame = gameKindSnake
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
-		} else if m.selected == 1 {
+		case 1:
 			m.currentMenu = menuMain
 			m.selected = 0
 		}
@@ -285,13 +289,14 @@ func (m *model) updateBlackjackOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selected++
 		}
 	case "enter", " ":
-		if m.selected == 0 {
+		switch m.selected {
+		case 0:
 			m.game = blackjack.NewBlackjack()
 			m.activeGame = gameKindBlackjack
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
-		} else if m.selected == 1 {
+		case 1:
 			m.currentMenu = menuMain
 			m.selected = 0
 		}
@@ -516,7 +521,7 @@ func (m *model) renderMainMenu() string {
 		if i == m.selected {
 			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
 		}
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", item))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
 	}
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
@@ -541,10 +546,11 @@ func (m *model) renderTetrisOptions() string {
 	ghostStr := fmt.Sprintf("  ║   Ghost Piece     [ %s ]  ◀ ▶      ║", ghostText)
 	levelStr := fmt.Sprintf("  ║   Start Level     [  %s  ]  ◀ ▶     ║", levelText)
 
-	if m.selected == 0 {
+	switch m.selected {
+	case 0:
 		ghostStr = "  ║  ▶ Ghost Piece     [ " + ghostText + " ]  ◀ ▶      ║"
 		ghostStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(ghostStr)
-	} else if m.selected == 1 {
+	case 1:
 		levelStr = "  ║  ▶ Start Level     [  " + levelText + "  ]  ◀ ▶     ║"
 		levelStr = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(levelStr)
 	}
@@ -553,12 +559,12 @@ func (m *model) renderTetrisOptions() string {
 
 	sb.WriteString("  ║                                       ║\n")
 	if m.selected == 2 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", "Start Game")
 	} else {
 		sb.WriteString("  ║    Start Game                        ║\n")
 	}
 	if m.selected == 3 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", "Back")
 	} else {
 		sb.WriteString("  ║    Back                             ║\n")
 	}
@@ -585,7 +591,7 @@ func (m *model) renderSnakeOptions() string {
 		if i == m.selected {
 			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
 		}
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", item))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
 	}
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
@@ -628,12 +634,12 @@ func (m *model) renderSudokuOptions() string {
 
 	sb.WriteString("  ║                                       ║\n")
 	if m.selected == 2 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", "Start Game")
 	} else {
 		sb.WriteString("  ║    Start Game                        ║\n")
 	}
 	if m.selected == 3 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", "Back")
 	} else {
 		sb.WriteString("  ║    Back                             ║\n")
 	}
@@ -660,7 +666,7 @@ func (m *model) renderBlackjackOptions() string {
 		if i == m.selected {
 			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
 		}
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", item))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
 	}
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
@@ -703,12 +709,12 @@ func (m *model) renderPokerOptions() string {
 
 	sb.WriteString("  ║                                       ║\n")
 	if m.selected == 2 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Start Game"))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", "Start Game")
 	} else {
 		sb.WriteString("  ║    Start Game                        ║\n")
 	}
 	if m.selected == 3 {
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", "Back"))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", "Back")
 	} else {
 		sb.WriteString("  ║    Back                             ║\n")
 	}
@@ -738,7 +744,7 @@ func (m *model) renderPauseMenu() string {
 		if i == m.selected {
 			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
 		}
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", item))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
 	}
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
@@ -763,22 +769,22 @@ func (m *model) renderGameOverMenu() string {
 		}
 		sb.WriteString("\n")
 		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
-		sb.WriteString(fmt.Sprintf("  ║%37s║\n", title))
+		fmt.Fprintf(&sb, "  ║%37s║\n", title)
 		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 		sb.WriteString("  ║                                       ║\n")
 		minutes := int(s.GetElapsed().Seconds()) / 60
 		seconds := int(s.GetElapsed().Seconds()) % 60
-		sb.WriteString(fmt.Sprintf("  ║   Time: %02d:%02d                         ║\n", minutes, seconds))
-		sb.WriteString(fmt.Sprintf("  ║   Difficulty: %-19s║\n", m.sudokuOpts.difficulty.String()))
+		fmt.Fprintf(&sb, "  ║   Time: %02d:%02d                         ║\n", minutes, seconds)
+		fmt.Fprintf(&sb, "  ║   Difficulty: %-19s║\n", m.sudokuOpts.difficulty.String())
 	} else {
 		sb.WriteString("\n")
 		sb.WriteString("  ╔═══════════════════════════════════════╗\n")
 		sb.WriteString("  ║            Game Over!                 ║\n")
 		sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 		sb.WriteString("  ║                                       ║\n")
-		sb.WriteString(fmt.Sprintf("  ║   Final Score: %-5d                 ║\n", m.game.GetScore()))
-		sb.WriteString(fmt.Sprintf("  ║   Level Reached: %-3d                ║\n", m.game.GetLevel()))
-		sb.WriteString(fmt.Sprintf("  ║   Lines Cleared: %-3d                ║\n", m.game.GetLines()))
+		fmt.Fprintf(&sb, "  ║   Final Score: %-5d                 ║\n", m.game.GetScore())
+		fmt.Fprintf(&sb, "  ║   Level Reached: %-3d                ║\n", m.game.GetLevel())
+		fmt.Fprintf(&sb, "  ║   Lines Cleared: %-3d                ║\n", m.game.GetLines())
 	}
 
 	sb.WriteString("  ║                                       ║\n")
@@ -786,7 +792,7 @@ func (m *model) renderGameOverMenu() string {
 		if i == m.selected {
 			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
 		}
-		sb.WriteString(fmt.Sprintf("  ║  ▶ %-31s ║\n", item))
+		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
 	}
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
@@ -803,7 +809,7 @@ func main() {
 			startLevel int
 		}{ghost: false, startLevel: 0},
 	})
-	if err := p.Start(); err != nil {
+	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error starting program: %v\n", err)
 		os.Exit(1)
 	}

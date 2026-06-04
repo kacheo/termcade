@@ -8,12 +8,6 @@ import (
 	"tmvgs/core"
 )
 
-func advanceTicks(s *Snake, n int) {
-	for range n {
-		s.Update(s.tickInterval)
-	}
-}
-
 func TestSnakeMetadata(t *testing.T) {
 	s := NewSnake()
 	if s.Name() != "Snake" {
@@ -69,7 +63,9 @@ func TestSnakeMove(t *testing.T) {
 
 	// Initial direction is right; one tick should move head right by 1
 	s.food = core.Position{X: -1, Y: -1} // ensure no food is eaten
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	newHead := s.body[0]
 	if newHead.X != origHead.X+1 || newHead.Y != origHead.Y {
@@ -87,7 +83,9 @@ func TestSnakeWallCollision_Right(t *testing.T) {
 	s.nextDir = dirRight
 	s.body = []core.Position{{X: BoardWidth - 1, Y: 5}, {X: BoardWidth - 2, Y: 5}}
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if !s.IsGameOver() {
 		t.Error("expected game over when hitting right wall")
@@ -101,7 +99,9 @@ func TestSnakeWallCollision_Left(t *testing.T) {
 	s.nextDir = dirLeft
 	s.body = []core.Position{{X: 0, Y: 5}, {X: 1, Y: 5}}
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if !s.IsGameOver() {
 		t.Error("expected game over when hitting left wall")
@@ -115,7 +115,9 @@ func TestSnakeWallCollision_Top(t *testing.T) {
 	s.nextDir = dirUp
 	s.body = []core.Position{{X: 5, Y: 0}, {X: 5, Y: 1}}
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if !s.IsGameOver() {
 		t.Error("expected game over when hitting top wall")
@@ -129,7 +131,9 @@ func TestSnakeWallCollision_Bottom(t *testing.T) {
 	s.nextDir = dirDown
 	s.body = []core.Position{{X: 5, Y: BoardHeight - 1}, {X: 5, Y: BoardHeight - 2}}
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if !s.IsGameOver() {
 		t.Error("expected game over when hitting bottom wall")
@@ -151,7 +155,9 @@ func TestSnakeSelfCollision(t *testing.T) {
 	s.nextDir = dirRight
 	s.food = core.Position{X: 0, Y: 0}
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if !s.IsGameOver() {
 		t.Error("expected game over when head enters a non-tail body segment")
@@ -166,7 +172,9 @@ func TestSnakeCannotReverse(t *testing.T) {
 
 	// Input the exact opposite direction — should be ignored
 	s.HandleInput("left")
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if s.IsGameOver() {
 		t.Error("reversing into self should not cause game over (input ignored)")
@@ -187,7 +195,9 @@ func TestSnakeFoodEat(t *testing.T) {
 	s.dir = dirRight
 	s.nextDir = dirRight
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if len(s.body) != origLen+1 {
 		t.Errorf("body length after eating = %d, want %d", len(s.body), origLen+1)
@@ -211,7 +221,9 @@ func TestSnakeLevelUp(t *testing.T) {
 		head := s.body[0]
 		d := dirDelta[s.dir]
 		s.food = core.Position{X: head.X + d.X, Y: head.Y + d.Y}
-		s.Update(s.tickInterval)
+		if err := s.Update(s.tickInterval); err != nil {
+			t.Fatal(err)
+		}
 		if s.IsGameOver() {
 			t.Fatal("game over while eating food for level test")
 		}
@@ -230,7 +242,9 @@ func TestSnakeTickIntervalDecreases(t *testing.T) {
 		head := s.body[0]
 		d := dirDelta[s.dir]
 		s.food = core.Position{X: head.X + d.X, Y: head.Y + d.Y}
-		s.Update(s.tickInterval)
+		if err := s.Update(s.tickInterval); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	if s.tickInterval >= initialInterval {
@@ -249,7 +263,9 @@ func TestSnakePause(t *testing.T) {
 		t.Error("expected IsPaused() true when s.paused is set")
 	}
 
-	s.Update(s.tickInterval * 5)
+	if err := s.Update(s.tickInterval * 5); err != nil {
+		t.Fatal(err)
+	}
 	if s.body[0] != origHead {
 		t.Error("snake moved while paused")
 	}
@@ -316,13 +332,17 @@ func TestSnakeElapsedAccumulator(t *testing.T) {
 	origHead := s.body[0]
 
 	// half a tick should not move
-	s.Update(s.tickInterval / 2)
+	if err := s.Update(s.tickInterval / 2); err != nil {
+		t.Fatal(err)
+	}
 	if s.body[0] != origHead {
 		t.Error("snake moved on sub-tick update")
 	}
 
 	// another half tick should trigger the step
-	s.Update(s.tickInterval / 2)
+	if err := s.Update(s.tickInterval / 2); err != nil {
+		t.Fatal(err)
+	}
 	if s.body[0] == origHead {
 		t.Error("snake did not move after full tick worth of delta")
 	}
@@ -351,7 +371,9 @@ func TestSnakeNoUpdateWhenGameOver(t *testing.T) {
 	s.dir = dirRight
 	snap := s.body[0]
 
-	s.Update(s.tickInterval * 10)
+	if err := s.Update(s.tickInterval * 10); err != nil {
+		t.Fatal(err)
+	}
 	if s.body[0] != snap {
 		t.Error("snake moved after game over")
 	}
@@ -421,7 +443,9 @@ func TestSnakeTailChase(t *testing.T) {
 	s.nextDir = dirRight
 	s.food = core.Position{X: 0, Y: 0} // food far away, not eating
 
-	s.Update(s.tickInterval)
+	if err := s.Update(s.tickInterval); err != nil {
+		t.Fatal(err)
+	}
 
 	if s.IsGameOver() {
 		t.Error("chasing the tail should not cause game over (tail vacates its cell)")

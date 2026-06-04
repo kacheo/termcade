@@ -160,25 +160,6 @@ func filterPlayers(players []player) []player {
 	return result
 }
 
-func (p *Poker) activePlayerCount() int {
-	count := 0
-	for _, pl := range p.players {
-		if !pl.folded && !pl.allIn {
-			count++
-		}
-	}
-	return count
-}
-
-func (p *Poker) allActed() bool {
-	for _, pl := range p.players {
-		if !pl.folded && !pl.allIn && pl.bet < p.toCall {
-			return false
-		}
-	}
-	return true
-}
-
 func (p *Poker) bettingRoundEnded() bool {
 	for _, pl := range p.players {
 		if !pl.folded && !pl.allIn && (!pl.acted || pl.bet < p.toCall) {
@@ -751,7 +732,7 @@ func (p *Poker) render() string {
 	if p.action == 0 && !p.raiseMode && p.phase >= phasePreflop && p.phase <= phaseRiver {
 		if p.toCall > 0 {
 			callStr := fmt.Sprintf("[C]all %d", p.toCall-p.players[0].bet)
-			sb.WriteString(fmt.Sprintf("  %-12s  ", callStr))
+			fmt.Fprintf(&sb, "  %-12s  ", callStr)
 		} else {
 			sb.WriteString("  [C]heck       ")
 		}

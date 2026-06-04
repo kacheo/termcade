@@ -7,6 +7,13 @@ import (
 )
 
 func Solve(board *Board) (bool, error) {
+	for r := 0; r < 9; r++ {
+		for c := 0; c < 9; c++ {
+			if board.cells[r][c].value != 0 && board.HasConflict(r, c) {
+				return false, fmt.Errorf("cell (%d,%d) has conflicting value %d", r, c, board.cells[r][c].value)
+			}
+		}
+	}
 	return solveRecursive(board, 0, 0, rand.New(rand.NewSource(time.Now().UnixNano())))
 }
 

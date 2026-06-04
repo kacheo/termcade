@@ -8,17 +8,6 @@ import (
 
 // ---- helpers ----------------------------------------------------------------
 
-// forceCurrentType keeps spawning until the current piece matches the given
-// type, swapping in a known next piece via the unexported bag.
-func newTetrisWithPiece(pieceType byte) *Tetris {
-	for {
-		t := NewTetris(false, 0)
-		if t.current.Type == pieceType {
-			return t
-		}
-	}
-}
-
 // dropToFloor moves the current piece straight down until it locks.
 func dropToFloor(t *Tetris) {
 	t.HandleInput(" ")
@@ -884,18 +873,17 @@ func TestTetrisLockDelay_LocksAfterDelay(t *testing.T) {
 	}
 	g.onGround = true
 	g.lockTimer = time.Now().Add(-LockDelay)
-
-	// Update - should lock now
-	err := g.Update(16 * time.Millisecond)
-	if err != nil {
-		t.Fatalf("Update error: %v", err)
+	preLockPiece := g.current
+	if preLockPiece == nil {
+		t.Fatal("current should not be nil before lock delay")
 	}
 
-	// Either locked (new piece spawned) or game over
-	if !g.IsGameOver() && g.current != nil {
-		// If current is still the same piece, lock didn't happen
-		// This is actually fine - lockTimer being in the past doesn't guarantee
-		// immediate lock on first update
+	// Update - should lock now (or end the game if the new spawn collides)
+	if err := g.Update(16 * time.Millisecond); err != nil {
+		t.Fatalf("Update error: %v", err)
+	}
+	if !g.IsGameOver() && g.current == preLockPiece {
+		t.Errorf("expected piece to lock (or game over) after LockDelay elapsed, but it did not")
 	}
 }
 

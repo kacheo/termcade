@@ -41,7 +41,10 @@ func Generate(diff Difficulty) *Board {
 }
 
 func fillBoard(board *Board, r *rand.Rand) {
-	solveRecursive(board, 0, 0, r)
+	ok, err := solveRecursive(board, 0, 0, r)
+	if err != nil || !ok {
+		panic("sudoku: solver failed to fill empty board")
+	}
 }
 
 func removeClues(board *Board, targetClues int, r *rand.Rand) {

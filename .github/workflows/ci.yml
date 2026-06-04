@@ -8,24 +8,18 @@ on:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Lint
-        if: matrix.os == 'ubuntu-latest'
-        uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.12.2
       - name: Test
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: coverage
