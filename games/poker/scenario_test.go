@@ -107,21 +107,30 @@ func TestScenarioCallCheck(t *testing.T) {
 		}
 
 		preflopPhase := g.phase // should be phasePreflop
+		initialHands := g.handsPlayed
 
-		g.HandleInput("c") // call or check
+		// Keep calling/checking until the phase advances past preflop or a hand
+		// completes. In a 3-player game the BB may have an option after everyone
+		// limps, requiring a second human action before the flop is dealt.
+		const maxRounds = 5
+		for i := 0; i < maxRounds; i++ {
+			g.HandleInput("c") // call or check
+			driveToCompletion(g, 1000)
+			if g.gameOver || g.phase != preflopPhase || g.handsPlayed > initialHands {
+				break
+			}
+			// Still at preflop — may be BB option; drive back to human turn and call again.
+			if !driveToHumanTurn(g, 500) {
+				break
+			}
+		}
 
-		driveToCompletion(g, 1000)
-
-		// Drive to next human turn so AI actions can complete the round.
-		driveToHumanTurn(g, 500)
-
-		// Assert that the game has made progress: either the phase advanced,
-		// a hand completed, or the game is over.
+		// After up to maxRounds of calling the game must have advanced.
 		phaseAdvanced := g.phase != preflopPhase
-		handCompleted := g.handsPlayed > 0
+		handCompleted := g.handsPlayed > initialHands
 		if !phaseAdvanced && !handCompleted && !g.gameOver {
-			t.Errorf("after call and AI turns: no progress made: phase=%v handsPlayed=%d gameOver=%v",
-				g.phase, g.handsPlayed, g.gameOver)
+			t.Errorf("after %d calls and AI turns: no progress made: phase=%v handsPlayed=%d (was %d) gameOver=%v",
+				maxRounds, g.phase, g.handsPlayed, initialHands, g.gameOver)
 		}
 	})
 }
@@ -138,16 +147,32 @@ func TestScenarioAllIn(t *testing.T) {
 		t.Fatal("game stuck before human's first turn (all-in scenario)")
 	}
 
+	// Capture chip total before all-in so we can verify conservation.
+	totalBefore := g.pot
+	for _, pl := range g.players {
+		totalBefore += pl.chips
+	}
+	initialHands := g.handsPlayed
+
 	g.HandleInput("a")
 
 	driveToCompletion(g, 2000)
 
-	// After an all-in the game must have advanced past preflop: the phase
-	// should be at least phaseFlop (community cards dealt), or a hand must have
-	// completed, or the game must be over.
-	if !g.gameOver && g.handsPlayed == 0 && g.phase == phasePreflop {
+	// The hand must have advanced past preflop or game is over.
+	if !g.gameOver && g.handsPlayed == initialHands && g.phase == phasePreflop {
 		t.Errorf("after all-in: game did not advance past preflop: phase=%v handsPlayed=%d",
 			g.phase, g.handsPlayed)
+		return
+	}
+
+	// Chip conservation: no chips created or destroyed across the all-in hand.
+	totalAfter := g.pot
+	for _, pl := range g.players {
+		totalAfter += pl.chips
+	}
+	if totalAfter != totalBefore {
+		t.Errorf("chip conservation violated after all-in: before=%d after=%d (diff=%d)",
+			totalBefore, totalAfter, totalAfter-totalBefore)
 	}
 }
 

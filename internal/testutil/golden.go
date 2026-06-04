@@ -14,6 +14,9 @@ var update = flag.Bool("update", false, "update golden files")
 // testdata/ directory if needed). Otherwise, it reads the golden file and fails
 // with a diff if the contents don't match. If the golden file doesn't exist and
 // -update is not set, it fails with a clear message.
+//
+// To regenerate all golden files run: make update-golden
+// (equivalent to: go test -run TestGoldenRender -args -update ./games/...)
 func CheckGolden(t *testing.T, name, got string) {
 	t.Helper()
 
