@@ -346,6 +346,25 @@ func (p *Poker) showdown() {
 		}
 	}
 	if len(activePlayers) == 0 {
+		// Degenerate case: every player folded. Return each player's
+		// contribution to avoid silently destroying chips.
+		for i, pl := range p.players {
+			if pl.contributed > 0 {
+				p.players[i].chips += pl.contributed
+			}
+		}
+		p.pot = 0
+		p.message = "All players folded — contributions returned"
+		return
+	}
+
+	// When only one player remains, award the pot directly without evaluating
+	// hands (community cards may not be fully dealt yet, e.g. a preflop fold).
+	if len(activePlayers) == 1 {
+		winner := activePlayers[0]
+		p.players[winner].chips += p.pot
+		p.message = fmt.Sprintf("%s wins $%d", p.players[winner].name, p.pot)
+		p.pot = 0
 		return
 	}
 
