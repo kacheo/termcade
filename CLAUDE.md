@@ -60,13 +60,13 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+go test -race ./...      # run all tests
+golangci-lint run ./...  # lint
+go build -o main ./cmd   # build binary
 ```
+
+Or via Makefile: `make test`, `make lint`, `make build`, `make coverage`
 
 ## Architecture Overview
 
