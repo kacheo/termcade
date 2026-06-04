@@ -3,6 +3,7 @@ package poker
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"strings"
 	"time"
 
@@ -404,13 +405,7 @@ func (p *Poker) showdown() {
 	for lvl := range levels {
 		sortedLevels = append(sortedLevels, lvl)
 	}
-	for i := 0; i < len(sortedLevels); i++ {
-		for j := i + 1; j < len(sortedLevels); j++ {
-			if sortedLevels[i] > sortedLevels[j] {
-				sortedLevels[i], sortedLevels[j] = sortedLevels[j], sortedLevels[i]
-			}
-		}
-	}
+	sort.Ints(sortedLevels)
 
 	if len(sortedLevels) == 0 {
 		p.awardSimplePot(activePlayers, hands)
@@ -447,7 +442,7 @@ func (p *Poker) showdown() {
 		return
 	}
 
-	var lastWinMsg string
+	var firstWinMsg string
 	for _, pot := range pots {
 		bestIdx := pot.eligible[0]
 		bestHand := hands[bestIdx]
@@ -470,15 +465,19 @@ func (p *Poker) showdown() {
 			p.players[winners[0]].chips += remainder
 		}
 		rankName := handRankName(bestHand.Rank)
+		var msg string
 		if len(winners) == 1 {
-			lastWinMsg = fmt.Sprintf("%s wins with %s — $%d", p.players[winners[0]].name, rankName, splitAmount)
+			msg = fmt.Sprintf("%s wins with %s — $%d", p.players[winners[0]].name, rankName, splitAmount)
 		} else {
-			lastWinMsg = fmt.Sprintf("Split pot! %d players tie with %s — $%d each", len(winners), rankName, splitAmount)
+			msg = fmt.Sprintf("Split pot! %d players tie with %s — $%d each", len(winners), rankName, splitAmount)
+		}
+		if firstWinMsg == "" {
+			firstWinMsg = msg
 		}
 	}
 	p.pot = 0
-	if lastWinMsg != "" {
-		p.message = lastWinMsg
+	if firstWinMsg != "" {
+		p.message = firstWinMsg
 	}
 }
 
