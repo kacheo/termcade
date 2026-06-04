@@ -22,14 +22,15 @@ const (
 )
 
 type player struct {
-	name    string
-	chips   int
-	hole    [2]cards.Card
-	bet     int
-	folded  bool
-	allIn   bool
-	isHuman bool
-	acted   bool
+	name        string
+	chips       int
+	hole        [2]cards.Card
+	bet         int
+	contributed int // total chips put into the pot this hand (for side pot calculation)
+	folded      bool
+	allIn       bool
+	isHuman     bool
+	acted       bool
 }
 
 type Poker struct {
@@ -111,6 +112,7 @@ func (p *Poker) startHand() {
 	for i := range p.players {
 		p.players[i].hole = [2]cards.Card{p.deck.Draw(), p.deck.Draw()}
 		p.players[i].bet = 0
+		p.players[i].contributed = 0
 		p.players[i].folded = false
 		p.players[i].allIn = false
 		p.players[i].acted = false
@@ -120,12 +122,14 @@ func (p *Poker) startHand() {
 	bigBlindIdx := (p.dealer + 2) % len(p.players)
 	p.players[smallBlindIdx].chips -= 10
 	p.players[smallBlindIdx].bet = 10
+	p.players[smallBlindIdx].contributed = 10
 	p.pot += 10
 	if p.players[smallBlindIdx].chips == 0 {
 		p.players[smallBlindIdx].allIn = true
 	}
 	p.players[bigBlindIdx].chips -= 20
 	p.players[bigBlindIdx].bet = 20
+	p.players[bigBlindIdx].contributed = 20
 	p.pot += 20
 	if p.players[bigBlindIdx].chips == 0 {
 		p.players[bigBlindIdx].allIn = true
@@ -240,6 +244,7 @@ func (p *Poker) applyAction(d Decision) {
 		}
 		p.players[p.action].chips -= toCall
 		p.players[p.action].bet += toCall
+		p.players[p.action].contributed += toCall
 		p.pot += toCall
 		if p.players[p.action].chips == 0 {
 			p.players[p.action].allIn = true
@@ -254,6 +259,7 @@ func (p *Poker) applyAction(d Decision) {
 			p.players[p.action].chips = 0
 			p.players[p.action].allIn = true
 			p.players[p.action].bet += allInAmount
+			p.players[p.action].contributed += allInAmount
 			p.pot += allInAmount
 			if p.toCall < p.players[p.action].bet {
 				p.toCall = p.players[p.action].bet
@@ -269,6 +275,7 @@ func (p *Poker) applyAction(d Decision) {
 		totalNeeded := callAmount + raiseAmount
 		p.players[p.action].chips -= totalNeeded
 		p.players[p.action].bet = p.toCall + raiseAmount
+		p.players[p.action].contributed += totalNeeded
 		p.pot += totalNeeded
 		p.toCall = p.players[p.action].bet
 		p.minRaise = raiseAmount
@@ -290,6 +297,7 @@ func (p *Poker) applyAction(d Decision) {
 		p.players[p.action].chips = 0
 		p.players[p.action].allIn = true
 		p.players[p.action].bet += allInAmount
+		p.players[p.action].contributed += allInAmount
 		p.pot += allInAmount
 		if p.players[p.action].bet > p.toCall {
 			p.toCall = p.players[p.action].bet
@@ -359,21 +367,134 @@ func (p *Poker) showdown() {
 		return
 	}
 
-	bestIdx := activePlayers[0]
-	bestHand := Evaluate(append(p.players[bestIdx].hole[:], p.community...))
+	// Pre-evaluate all active hands once.
+	hands := make(map[int]EvaluatedHand, len(activePlayers))
+	for _, idx := range activePlayers {
+		hands[idx] = Evaluate(append(p.players[idx].hole[:], p.community...))
+	}
 
+	// When contributions don't sum to the actual pot (e.g., pot was set
+	// directly without going through the betting flow), use the simple
+	// winner-takes-all/split logic with no side pots.
+	totalContributed := 0
+	for _, pl := range p.players {
+		totalContributed += pl.contributed
+	}
+	if totalContributed != p.pot {
+		p.awardSimplePot(activePlayers, hands)
+		return
+	}
+
+	// Build side pots from per-player contributions. Each unique contribution
+	// cap defines a pot; players who contributed at least that much are
+	// eligible to win it.
+	type sidePot struct {
+		amount   int
+		eligible []int
+	}
+
+	// Collect unique contribution levels (ascending).
+	levels := make(map[int]bool)
+	for _, pl := range p.players {
+		if pl.contributed > 0 {
+			levels[pl.contributed] = true
+		}
+	}
+	sortedLevels := make([]int, 0, len(levels))
+	for lvl := range levels {
+		sortedLevels = append(sortedLevels, lvl)
+	}
+	for i := 0; i < len(sortedLevels); i++ {
+		for j := i + 1; j < len(sortedLevels); j++ {
+			if sortedLevels[i] > sortedLevels[j] {
+				sortedLevels[i], sortedLevels[j] = sortedLevels[j], sortedLevels[i]
+			}
+		}
+	}
+
+	if len(sortedLevels) == 0 {
+		p.awardSimplePot(activePlayers, hands)
+		return
+	}
+
+	pots := make([]sidePot, 0, len(sortedLevels))
+	prev := 0
+	for _, lvl := range sortedLevels {
+		amount := 0
+		for _, pl := range p.players {
+			contrib := pl.contributed
+			if contrib > lvl {
+				contrib = lvl
+			}
+			if contrib > prev {
+				amount += contrib - prev
+			}
+		}
+		eligible := []int{}
+		for i, pl := range p.players {
+			if !pl.folded && pl.contributed >= lvl {
+				eligible = append(eligible, i)
+			}
+		}
+		if amount > 0 && len(eligible) > 0 {
+			pots = append(pots, sidePot{amount: amount, eligible: eligible})
+		}
+		prev = lvl
+	}
+
+	if len(pots) == 0 {
+		p.awardSimplePot(activePlayers, hands)
+		return
+	}
+
+	var lastWinMsg string
+	for _, pot := range pots {
+		bestIdx := pot.eligible[0]
+		bestHand := hands[bestIdx]
+		winners := []int{bestIdx}
+		for _, idx := range pot.eligible[1:] {
+			cmp := Compare(hands[idx], bestHand)
+			if cmp > 0 {
+				bestHand = hands[idx]
+				winners = []int{idx}
+			} else if cmp == 0 {
+				winners = append(winners, idx)
+			}
+		}
+		splitAmount := pot.amount / len(winners)
+		for _, w := range winners {
+			p.players[w].chips += splitAmount
+		}
+		remainder := pot.amount % len(winners)
+		if remainder > 0 {
+			p.players[winners[0]].chips += remainder
+		}
+		rankName := handRankName(bestHand.Rank)
+		if len(winners) == 1 {
+			lastWinMsg = fmt.Sprintf("%s wins with %s — $%d", p.players[winners[0]].name, rankName, splitAmount)
+		} else {
+			lastWinMsg = fmt.Sprintf("Split pot! %d players tie with %s — $%d each", len(winners), rankName, splitAmount)
+		}
+	}
+	p.pot = 0
+	if lastWinMsg != "" {
+		p.message = lastWinMsg
+	}
+}
+
+func (p *Poker) awardSimplePot(activePlayers []int, hands map[int]EvaluatedHand) {
+	bestIdx := activePlayers[0]
+	bestHand := hands[bestIdx]
 	winners := []int{bestIdx}
 	for _, idx := range activePlayers[1:] {
-		hand := Evaluate(append(p.players[idx].hole[:], p.community...))
-		cmp := Compare(hand, bestHand)
+		cmp := Compare(hands[idx], bestHand)
 		if cmp > 0 {
-			bestHand = hand
+			bestHand = hands[idx]
 			winners = []int{idx}
 		} else if cmp == 0 {
 			winners = append(winners, idx)
 		}
 	}
-
 	splitAmount := p.pot / len(winners)
 	for _, w := range winners {
 		p.players[w].chips += splitAmount
@@ -383,7 +504,6 @@ func (p *Poker) showdown() {
 		p.players[winners[0]].chips += remainder
 	}
 	p.pot = 0
-
 	rankName := handRankName(bestHand.Rank)
 	if len(winners) == 1 {
 		p.message = fmt.Sprintf("%s wins with %s — $%d", p.players[winners[0]].name, rankName, splitAmount)

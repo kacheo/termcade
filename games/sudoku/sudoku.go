@@ -136,6 +136,7 @@ func (s *Sudoku) togglePencilMark(digit int) {
 	if cell.given || cell.value != 0 {
 		return
 	}
+	s.pushUndo(s.cursorRow, s.cursorCol)
 	cell.pencilMarks[digit] = !cell.pencilMarks[digit]
 }
 
