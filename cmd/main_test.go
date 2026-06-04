@@ -105,7 +105,7 @@ func TestUpdateMainMenu_NavigateUp_AtZero(t *testing.T) {
 
 func TestUpdateMainMenu_NavigateBoundary(t *testing.T) {
 	m := newModel()
-	items := []string{"Play Tetris", "Play Sudoku", "Snake (coming soon)", "Pong (coming soon)", "", "Quit"}
+	items := []string{"Play Tetris", "Play Snake", "Play Sudoku", "Play Blackjack", "Play Poker", "", "Quit"}
 	// Drive to last item
 	for i := 0; i < len(items)*2; i++ {
 		m.updateMainMenu(tea.KeyMsg{Type: tea.KeyDown})
@@ -129,7 +129,7 @@ func TestUpdateMainMenu_SelectTetris(t *testing.T) {
 
 func TestUpdateMainMenu_Quit(t *testing.T) {
 	m := newModel()
-	m.selected = 5
+	m.selected = 6
 	_, cmd := m.updateMainMenu(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd == nil {
 		t.Error("selecting Quit should return a non-nil tea.Cmd")
@@ -738,8 +738,9 @@ func TestMainMenu_NavigateToBlackjack(t *testing.T) {
 	m := newModel()
 	m.updateMainMenu(keyMsg("down"))
 	m.updateMainMenu(keyMsg("down"))
-	if m.selected != 2 {
-		t.Fatalf("selected = %d, want 2", m.selected)
+	m.updateMainMenu(keyMsg("down"))
+	if m.selected != 3 {
+		t.Fatalf("selected = %d, want 3", m.selected)
 	}
 	m.updateMainMenu(keyMsg("enter"))
 	if m.currentMenu != menuBlackjackOptions {

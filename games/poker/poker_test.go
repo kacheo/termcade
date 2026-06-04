@@ -157,3 +157,61 @@ func TestEndBettingRoundWithOnlyOneRemainingGoesToShowdown(t *testing.T) {
 		t.Errorf("last standing player should win pot (1080), got %d chips", p.players[0].chips)
 	}
 }
+
+func TestShowdown_SidePotAllIn(t *testing.T) {
+	p := NewPoker(3, Easy)
+	// Community: three Kings + two low cards → full houses determined by hole pair rank.
+	p.community = []cards.Card{
+		{Rank: cards.King, Suit: cards.Spades},
+		{Rank: cards.King, Suit: cards.Hearts},
+		{Rank: cards.King, Suit: cards.Diamonds},
+		{Rank: cards.Two, Suit: cards.Clubs},
+		{Rank: cards.Three, Suit: cards.Spades},
+	}
+	// Player 0 (human): all-in at $50, best hand (KKK+AA full house).
+	p.players[0].chips = 0
+	p.players[0].contributed = 50
+	p.players[0].allIn = true
+	p.players[0].folded = false
+	p.players[0].hole = [2]cards.Card{
+		{Rank: cards.Ace, Suit: cards.Hearts},
+		{Rank: cards.Ace, Suit: cards.Diamonds},
+	}
+	// Player 1 (AI): contributed $100, second-best hand (KKK+QQ full house).
+	p.players[1].chips = 0
+	p.players[1].contributed = 100
+	p.players[1].allIn = false
+	p.players[1].folded = false
+	p.players[1].hole = [2]cards.Card{
+		{Rank: cards.Queen, Suit: cards.Hearts},
+		{Rank: cards.Queen, Suit: cards.Diamonds},
+	}
+	// Player 2 (AI): contributed $100, worst hand (KKK+JJ full house).
+	p.players[2].chips = 0
+	p.players[2].contributed = 100
+	p.players[2].allIn = false
+	p.players[2].folded = false
+	p.players[2].hole = [2]cards.Card{
+		{Rank: cards.Jack, Suit: cards.Hearts},
+		{Rank: cards.Jack, Suit: cards.Diamonds},
+	}
+	// pot must equal sum of contributions to activate the side-pot path.
+	p.pot = 250
+
+	p.showdown()
+
+	// Main pot (level $50): $150 total, all 3 eligible → player 0 wins.
+	// Side pot (level $100): $100 total, players 1 and 2 eligible → player 1 wins.
+	if p.players[0].chips != 150 {
+		t.Errorf("all-in player chips = %d, want 150 (main pot)", p.players[0].chips)
+	}
+	if p.players[1].chips != 100 {
+		t.Errorf("player 1 chips = %d, want 100 (side pot)", p.players[1].chips)
+	}
+	if p.players[2].chips != 0 {
+		t.Errorf("player 2 chips = %d, want 0", p.players[2].chips)
+	}
+	if p.pot != 0 {
+		t.Errorf("pot = %d, want 0 after showdown", p.pot)
+	}
+}
