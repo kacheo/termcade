@@ -1,4 +1,4 @@
-.PHONY: lint test coverage build clean
+.PHONY: lint test coverage build clean update-golden
 
 lint:
 	golangci-lint run ./...
@@ -11,6 +11,9 @@ coverage: test
 
 build:
 	go build -o main ./cmd
+
+update-golden:
+	go test -run TestGoldenRender -args -update ./games/...
 
 clean:
 	rm -f coverage.out main
