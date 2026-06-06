@@ -1,0 +1,13 @@
+
+  ╔═══════════════════════════════════════╗
+  ║        Sudoku — Options              ║
+  ╠═══════════════════════════════════════╣
+  ║                                       ║
+  ║  ▶ Difficulty    [ Medium   ]            ║
+  ║   Highlight     [ Blue     ]            ║
+  ║                                       ║
+  ║    Start Game                        ║
+  ║    Back                             ║
+  ║                                       ║
+  ╚═══════════════════════════════════════╝
+    ←→ Change   ↑↓ Select   Enter Confirm   Q Back

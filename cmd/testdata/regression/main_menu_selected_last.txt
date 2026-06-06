@@ -1,0 +1,15 @@
+
+  ╔═══════════════════════════════════════╗
+  ║        tmvgs — Terminal Games         ║
+  ╠═══════════════════════════════════════╣
+  ║                                       ║
+  ║  ▶ Play Tetris                     ║
+  ║  ▶ Play Snake                      ║
+  ║  ▶ Play Sudoku                     ║
+  ║  ▶ Play Blackjack                  ║
+  ║  ▶ Play Poker                      ║
+  ║                                       ║
+  ║  ▶ Quit                            ║
+  ║                                       ║
+  ╚═══════════════════════════════════════╝
+    ↑↓ Navigate   Enter Select   Q Quit
