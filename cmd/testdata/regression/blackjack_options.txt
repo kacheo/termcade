@@ -1,0 +1,14 @@
+
+  ╔═══════════════════════════════════════╗
+  ║       Blackjack — Ready?              ║
+  ╠═══════════════════════════════════════╣
+  ║                                       ║
+  ║   Beat the dealer. You and 3 AI       ║
+  ║   players vs the house. Hit or        ║
+  ║   stand — closest to 21 wins.         ║
+  ║                                       ║
+  ║  ▶ Start Game                      ║
+  ║  ▶ Back                            ║
+  ║                                       ║
+  ╚═══════════════════════════════════════╝
+    ↑↓ Navigate   Enter Select

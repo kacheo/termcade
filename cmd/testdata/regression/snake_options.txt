@@ -1,0 +1,14 @@
+
+  ╔═══════════════════════════════════════╗
+  ║         Snake — Ready?                ║
+  ╠═══════════════════════════════════════╣
+  ║                                       ║
+  ║   Eat food to grow. Avoid walls and   ║
+  ║   your own tail. Speed increases      ║
+  ║   as you level up.                    ║
+  ║                                       ║
+  ║  ▶ Start Game                      ║
+  ║  ▶ Back                            ║
+  ║                                       ║
+  ╚═══════════════════════════════════════╝
+    ↑↓ Navigate   Enter Select
