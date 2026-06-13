@@ -17,3 +17,12 @@ config.yaml
 .worktrees/
 .claude/worktrees/
 .beads/interactions.jsonl
+
+# Local dev tooling (not for public repo)
+.beads/
+.claude/
+.agents/
+.codex/
+.doltcfg/
+AGENTS.md
+CLAUDE.md
