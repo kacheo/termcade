@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"tmvgs/core"
+	"github.com/kacheo/tmvgs/core"
 )
 
 func TestSnakeMetadata(t *testing.T) {

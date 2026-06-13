@@ -1,4 +1,4 @@
-module tmvgs
+module github.com/kacheo/tmvgs
 
 go 1.26.1
 

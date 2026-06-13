@@ -3,7 +3,7 @@ package blackjack
 import (
 	"math/rand"
 	"testing"
-	"tmvgs/internal/testutil"
+	"github.com/kacheo/tmvgs/internal/testutil"
 )
 
 func TestGoldenRenderBlackjackInitialState(t *testing.T) {

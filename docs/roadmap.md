@@ -9,32 +9,15 @@
 
 ## Game Queue
 
-### 1. Snake
-**Status:** Menu placeholder exists
-**Controls:** Arrow keys
-**Why:** Iconic, minimal learning curve, proven fun
-**Effort:** ~4-6 hours
-
-### 2. Blackjack
-**Status:** Not started
-**Controls:** Arrow keys to select action + Enter to confirm (Hit / Stand / Double / Split)
-**Why:** Universally known rules, fast hands, ASCII card rendering, pure decision-making
-**Effort:** ~4-6 hours
-
-### 3. Minesweeper
+### 1. Minesweeper
 **Controls:** Arrow keys + Enter to reveal/flag
 **Why:** Pure logic, no reflexes, satisfying "aha" moments
 **Effort:** ~6-8 hours
 
-### 4. Connect Four
+### 2. Connect Four
 **Controls:** Arrow keys + Enter to drop piece
 **Why:** Simple strategy, vs AI is engaging
 **Effort:** ~6-8 hours
-
-### 5. Sudoku
-**Controls:** Arrow keys + number keys + pencil marks
-**Why:** Massively popular, no time pressure, replayable
-**Effort:** ~8-10 hours
 
 ## Future Considerations
 - Wordle-style word puzzles
@@ -43,7 +26,11 @@
 - Card games (Solitaire)
 
 ## Completed
-- [x] Tetris (MVP shipped)
+- [x] Tetris
+- [x] Snake
+- [x] Blackjack
+- [x] Sudoku
+- [x] Poker (Texas Hold'em with AI opponents and side pots)
 
 ## Archived Ideas
 - Hangman (replaced with Sudoku - more engaging gameplay)

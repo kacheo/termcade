@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	cardpkg "tmvgs/games/cards"
+	cardpkg "github.com/kacheo/tmvgs/games/cards"
 )
 
 func TestNewBlackjack_Metadata(t *testing.T) {

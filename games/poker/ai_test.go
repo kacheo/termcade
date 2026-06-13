@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"tmvgs/games/cards"
+	"github.com/kacheo/tmvgs/games/cards"
 )
 
 func TestEasyAIRaisesLessThan20Percent(t *testing.T) {

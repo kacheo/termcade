@@ -2,7 +2,7 @@ package tetris
 
 import (
 	"testing"
-	"tmvgs/internal/testutil"
+	"github.com/kacheo/tmvgs/internal/testutil"
 )
 
 func TestGoldenRenderTetrisInitialState(t *testing.T) {

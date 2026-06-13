@@ -3,7 +3,7 @@ package poker
 import (
 	"math/rand"
 	"testing"
-	"tmvgs/internal/testutil"
+	"github.com/kacheo/tmvgs/internal/testutil"
 )
 
 func TestGoldenRenderPokerInitialState(t *testing.T) {

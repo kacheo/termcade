@@ -3,7 +3,7 @@ package snake
 import (
 	"math/rand"
 	"testing"
-	"tmvgs/internal/testutil"
+	"github.com/kacheo/tmvgs/internal/testutil"
 )
 
 func TestGoldenRenderSnakeInitialState(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"tmvgs/core"
+	"github.com/kacheo/tmvgs/core"
 )
 
 // TestScenarioSnakeMove verifies that calling Update(200ms) advances the head
