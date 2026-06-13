@@ -4,6 +4,11 @@ Classic arcade games in your terminal, built with Go and Bubble Tea.
 
 **Stack:** Go · [Bubble Tea](https://github.com/charmbracelet/bubbletea) · [Lipgloss](https://github.com/charmbracelet/lipgloss)
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kacheo/tmvgs)](https://goreportcard.com/report/github.com/kacheo/tmvgs)
+[![CI](https://github.com/kacheo/tmvgs/actions/workflows/ci.yml/badge.svg)](https://github.com/kacheo/tmvgs/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/kacheo/tmvgs)](https://github.com/kacheo/tmvgs/releases)
+
 ---
 
 ## Getting Started
@@ -20,7 +25,7 @@ Or build a binary:
 go build -o main ./cmd && ./main
 ```
 
-Requires Go 1.22+.
+Requires Go 1.26+.
 
 ---
 
