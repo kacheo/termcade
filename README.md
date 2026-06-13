@@ -20,7 +20,7 @@ Or build a binary:
 go build -o main ./cmd && ./main
 ```
 
-Requires Go 1.21+.
+Requires Go 1.22+.
 
 ---
 
@@ -32,6 +32,7 @@ Requires Go 1.21+.
 | Snake | Guide your snake to food, avoid walls and yourself | [games/snake/README.md](games/snake/README.md) |
 | Sudoku | Procedurally generated number puzzles, three difficulty levels | [games/sudoku/README.md](games/sudoku/README.md) |
 | Blackjack | Player vs dealer — hit or stand to beat 21 | [games/blackjack/README.md](games/blackjack/README.md) |
+| Poker | Texas Hold'em with AI opponents and side pots | [games/poker/README.md](games/poker/README.md) |
 
 ---
 
@@ -45,6 +46,8 @@ games/tetris/     — Tetris (ghost piece, configurable start level)
 games/snake/      — Snake (20×20 grid, 10 levels)
 games/sudoku/     — Sudoku (procedurally generated, 3 difficulties)
 games/blackjack/  — Blackjack (player vs dealer)
+games/poker/      — Texas Hold'em (AI opponents, side pots)
+games/cards/      — Shared card types and deck
 ```
 
 Adding a new game: implement `core.Game` and register it in `cmd/main.go`.

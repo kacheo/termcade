@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/bubbletea"
 
-	"tmvgs/games/sudoku"
+	"github.com/kacheo/tmvgs/games/sudoku"
 )
 
 var updateGoldens = flag.Bool("update", false, "update regression golden files")

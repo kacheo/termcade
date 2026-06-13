@@ -8,12 +8,12 @@ import (
 
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"tmvgs/core"
-	"tmvgs/games/blackjack"
-	"tmvgs/games/poker"
-	"tmvgs/games/snake"
-	"tmvgs/games/sudoku"
-	"tmvgs/games/tetris"
+	"github.com/kacheo/tmvgs/core"
+	"github.com/kacheo/tmvgs/games/blackjack"
+	"github.com/kacheo/tmvgs/games/poker"
+	"github.com/kacheo/tmvgs/games/snake"
+	"github.com/kacheo/tmvgs/games/sudoku"
+	"github.com/kacheo/tmvgs/games/tetris"
 )
 
 type tickMsg struct {

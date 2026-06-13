@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"tmvgs/core/ui"
+	"github.com/kacheo/tmvgs/core/ui"
 )
 
 type Tetris struct {

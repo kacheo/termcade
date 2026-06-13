@@ -2,7 +2,7 @@ package poker
 
 import (
 	"testing"
-	"tmvgs/games/cards"
+	"github.com/kacheo/tmvgs/games/cards"
 )
 
 func makeCard(rank cards.Rank, suit cards.Suit) cards.Card {

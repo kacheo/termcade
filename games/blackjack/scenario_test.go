@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	cardpkg "tmvgs/games/cards"
+	cardpkg "github.com/kacheo/tmvgs/games/cards"
 )
 
 // makeDeck builds a Deck from the given cards; the first card listed is drawn first.

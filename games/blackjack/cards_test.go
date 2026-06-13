@@ -3,7 +3,7 @@ package blackjack
 import (
 	"testing"
 
-	"tmvgs/games/cards"
+	"github.com/kacheo/tmvgs/games/cards"
 )
 
 func TestHandValue(t *testing.T) {

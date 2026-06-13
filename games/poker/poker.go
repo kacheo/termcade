@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"tmvgs/games/cards"
+	"github.com/kacheo/tmvgs/games/cards"
 )
 
 type phase int
