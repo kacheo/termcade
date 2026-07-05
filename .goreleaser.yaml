@@ -1,0 +1,56 @@
+version: 2
+
+project_name: termcade
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: linux
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+brews:
+  - name: termcade
+    homepage: "https://github.com/kacheo/termcade"
+    description: "Classic arcade games in your terminal, built with Go and Bubble Tea"
+    license: "Apache-2.0"
+    repository:
+      owner: kacheo
+      name: homebrew-termcade
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    install: |
+      bin.install "termcade"
+    test: |
+      system "#{bin}/termcade", "--version"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

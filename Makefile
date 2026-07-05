@@ -10,14 +10,14 @@ coverage: test
 	go tool cover -html=coverage.out
 
 build:
-	go build -o main ./cmd
+	go build -o termcade ./cmd
 
 update-golden:
 	go test -run TestGoldenRender -args -update ./games/...
 	go test -tags=regression -run TestRegression -args -update ./cmd/...
 
 clean:
-	rm -f coverage.out main
+	rm -f coverage.out termcade
 
 test-integration:
 	@echo "termcade has no subprocess CLI; integration tests not applicable. See tests/regression/ for cmd-level goldens."

@@ -16,6 +16,8 @@ import (
 	"github.com/kacheo/termcade/games/tetris"
 )
 
+var version = "dev"
+
 type tickMsg struct {
 	time.Time
 }
@@ -801,6 +803,18 @@ func (m *model) renderGameOverMenu() string {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-v":
+			fmt.Println("termcade", version)
+			return
+		case "--help", "-h":
+			fmt.Println("termcade - classic arcade games in your terminal")
+			fmt.Println("Usage: termcade")
+			return
+		}
+	}
+
 	p := tea.NewProgram(&model{
 		currentMenu: menuMain,
 		selected:    0,

@@ -11,7 +11,15 @@ Classic arcade games in your terminal, built with Go and Bubble Tea.
 
 ---
 
-## Getting Started
+## Install
+
+### Homebrew (macOS/Linux)
+
+```bash
+brew install kacheo/termcade/termcade
+```
+
+### From source
 
 ```bash
 git clone https://github.com/kacheo/termcade
@@ -22,7 +30,7 @@ go run ./cmd
 Or build a binary:
 
 ```bash
-go build -o main ./cmd && ./main
+go build -o termcade ./cmd && ./termcade
 ```
 
 Requires Go 1.26+.
