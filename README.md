@@ -1,21 +1,21 @@
-# tmvgs — Terminal Video Games Suite
+# termcade
 
 Classic arcade games in your terminal, built with Go and Bubble Tea.
 
 **Stack:** Go · [Bubble Tea](https://github.com/charmbracelet/bubbletea) · [Lipgloss](https://github.com/charmbracelet/lipgloss)
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/kacheo/tmvgs)](https://goreportcard.com/report/github.com/kacheo/tmvgs)
-[![CI](https://github.com/kacheo/tmvgs/actions/workflows/ci.yml/badge.svg)](https://github.com/kacheo/tmvgs/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/kacheo/tmvgs)](https://github.com/kacheo/tmvgs/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kacheo/termcade)](https://goreportcard.com/report/github.com/kacheo/termcade)
+[![CI](https://github.com/kacheo/termcade/actions/workflows/ci.yml/badge.svg)](https://github.com/kacheo/termcade/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/kacheo/termcade)](https://github.com/kacheo/termcade/releases)
 
 ---
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/kacheo/tmvgs
-cd tmvgs
+git clone https://github.com/kacheo/termcade
+cd termcade
 go run ./cmd
 ```
 

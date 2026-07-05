@@ -3,7 +3,7 @@ package sudoku
 import (
 	"math/rand"
 	"testing"
-	"github.com/kacheo/tmvgs/internal/testutil"
+	"github.com/kacheo/termcade/internal/testutil"
 )
 
 // generateSeeded creates a deterministic board using a fixed seed.

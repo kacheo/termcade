@@ -1,5 +1,5 @@
 package games
 
-import "github.com/kacheo/tmvgs/core"
+import "github.com/kacheo/termcade/core"
 
 type Game = core.Game

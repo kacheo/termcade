@@ -3,8 +3,8 @@ package poker
 import (
 	"testing"
 
-	"github.com/kacheo/tmvgs/core"
-	"github.com/kacheo/tmvgs/games/cards"
+	"github.com/kacheo/termcade/core"
+	"github.com/kacheo/termcade/games/cards"
 )
 
 func TestNewPokerCreatesCorrectNumberOfPlayers(t *testing.T) {

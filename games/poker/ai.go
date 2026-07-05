@@ -3,7 +3,7 @@ package poker
 import (
 	"math/rand"
 
-	"github.com/kacheo/tmvgs/games/cards"
+	"github.com/kacheo/termcade/games/cards"
 )
 
 type Difficulty int

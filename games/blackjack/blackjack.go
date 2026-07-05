@@ -8,7 +8,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	cardpkg "github.com/kacheo/tmvgs/games/cards"
+	cardpkg "github.com/kacheo/termcade/games/cards"
 )
 
 type phase int

@@ -1,4 +1,4 @@
-module github.com/kacheo/tmvgs
+module github.com/kacheo/termcade
 
 go 1.26.1
 

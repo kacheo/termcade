@@ -1,4 +1,4 @@
-# TMVGS Game Roadmap
+# termcade Game Roadmap
 
 ## Philosophy
 - Easy to pick up (learn in <30 seconds)

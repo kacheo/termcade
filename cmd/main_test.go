@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/kacheo/tmvgs/games/sudoku"
-	"github.com/kacheo/tmvgs/games/tetris"
+	"github.com/kacheo/termcade/games/sudoku"
+	"github.com/kacheo/termcade/games/tetris"
 )
 
 // ---- MockGame ---------------------------------------------------------------

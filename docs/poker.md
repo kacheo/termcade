@@ -1,6 +1,6 @@
 # Poker (Texas Hold'em) — Implementation Spec
 
-This document is a self-contained specification for adding a Texas Hold'em poker game to the **tmvgs** terminal game suite. An implementer should be able to build the feature using only this document and the existing codebase as reference.
+This document is a self-contained specification for adding a Texas Hold'em poker game to the **termcade** terminal game suite. An implementer should be able to build the feature using only this document and the existing codebase as reference.
 
 ---
 
@@ -240,7 +240,7 @@ case gameKindPoker:
 
 ### 3i. Import
 
-Add `"tmvgs/games/poker"` to the import block in `main.go`.
+Add `"github.com/kacheo/termcade/games/poker"` to the import block in `main.go`.
 
 ---
 
@@ -268,7 +268,7 @@ func (p *Poker) HandleInput(key string) { ... }
 Import `games/cards`. All card/deck types and rendering helpers come from there — do not redefine them in `games/poker`.
 
 ```go
-import "tmvgs/games/cards"
+import "github.com/kacheo/termcade/games/cards"
 
 // Use directly:
 // cards.Card, cards.Deck, cards.NewDeck(), cards.Suit, cards.Rank

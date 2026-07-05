@@ -1,6 +1,6 @@
 package blackjack
 
-import "github.com/kacheo/tmvgs/games/cards"
+import "github.com/kacheo/termcade/games/cards"
 
 type Hand []cards.Card
 

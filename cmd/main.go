@@ -8,12 +8,12 @@ import (
 
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kacheo/tmvgs/core"
-	"github.com/kacheo/tmvgs/games/blackjack"
-	"github.com/kacheo/tmvgs/games/poker"
-	"github.com/kacheo/tmvgs/games/snake"
-	"github.com/kacheo/tmvgs/games/sudoku"
-	"github.com/kacheo/tmvgs/games/tetris"
+	"github.com/kacheo/termcade/core"
+	"github.com/kacheo/termcade/games/blackjack"
+	"github.com/kacheo/termcade/games/poker"
+	"github.com/kacheo/termcade/games/snake"
+	"github.com/kacheo/termcade/games/sudoku"
+	"github.com/kacheo/termcade/games/tetris"
 )
 
 type tickMsg struct {
@@ -510,7 +510,7 @@ func (m *model) renderMainMenu() string {
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
-	sb.WriteString("  ║        tmvgs — Terminal Games         ║\n")
+	sb.WriteString("  ║       termcade — Terminal Games       ║\n")
 	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 	sb.WriteString("  ║                                       ║\n")
 	for i, item := range items {

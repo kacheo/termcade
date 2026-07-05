@@ -20,7 +20,7 @@ clean:
 	rm -f coverage.out main
 
 test-integration:
-	@echo "tmvgs has no subprocess CLI; integration tests not applicable. See tests/regression/ for cmd-level goldens."
+	@echo "termcade has no subprocess CLI; integration tests not applicable. See tests/regression/ for cmd-level goldens."
 	@exit 0
 
 test-regression:

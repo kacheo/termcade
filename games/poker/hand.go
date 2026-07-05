@@ -2,7 +2,7 @@ package poker
 
 import (
 	"sort"
-	"github.com/kacheo/tmvgs/games/cards"
+	"github.com/kacheo/termcade/games/cards"
 )
 
 type HandRank int

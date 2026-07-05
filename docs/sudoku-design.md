@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Project:** tmvgs Sudoku game
+**Project:** termcade Sudoku game
 **Type:** Single-player puzzle game
 **Status:** Approved
 

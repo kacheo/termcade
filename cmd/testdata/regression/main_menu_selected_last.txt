@@ -1,6 +1,6 @@
 
   ╔═══════════════════════════════════════╗
-  ║        tmvgs — Terminal Games         ║
+  ║       termcade — Terminal Games       ║
   ╠═══════════════════════════════════════╣
   ║                                       ║
   ║  ▶ Play Tetris                     ║

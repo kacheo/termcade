@@ -1,11 +1,11 @@
 // Package testharness documents the convention for game-level scenario
-// tests in tmvgs.
+// tests in termcade.
 //
 // Why most helpers stay local
 //
 // The devlog reference project shares helpers via tests/testharness because
 // its surface is a stable CLI: every helper can drive the public subprocess
-// interface. tmvgs is a Bubble Tea TU where each game has its own internal
+// interface. termcade is a Bubble Tea TU where each game has its own internal
 // state machine — phase enums, AI delays, board cells — that scenario tests
 // legitimately need to peek at and mutate.
 //

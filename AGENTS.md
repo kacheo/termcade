@@ -4,7 +4,7 @@ This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get sta
 
 ## Project
 
-**tmvgs** is a Go terminal games suite (Bubble Tea MVU + Lipgloss).
+**termcade** is a Go terminal games suite (Bubble Tea MVU + Lipgloss).
 
 Key files:
 - `cmd/main.go` — menu state machine: `menuMain → menuTetrisOptions → menuPlaying → menuPause → menuGameOver`

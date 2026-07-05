@@ -1,8 +1,8 @@
-# tmvgs — Terminal Video Games
+# termcade — Terminal Video Games
 
 ## Project Overview
 
-**Name:** tmvgs (Terminal Video Games)
+**Name:** termcade (Terminal Video Games)
 **Type:** Arcade game collection for the terminal
 **Core Functionality:** A extensible framework for playing classic arcade games (starting with Tetris) in the terminal using Go and Bubbletea
 **Target Users:** Terminal enthusiasts, roguelike fans, quick gaming sessions
@@ -11,7 +11,7 @@
 
 ## Concept
 
-tmvgs is a collection of arcade games designed for the terminal. The first game is Tetris — a polished, guideline-compliant implementation. The framework is built to be extensible: adding new games (Snake, Pong, Space Invaders) means implementing a simple `Game` interface and dropping in a new package.
+termcade is a collection of arcade games designed for the terminal. The first game is Tetris — a polished, guideline-compliant implementation. The framework is built to be extensible: adding new games (Snake, Pong, Space Invaders) means implementing a simple `Game` interface and dropping in a new package.
 
 The aesthetic is refined terminal: box-drawing characters, proper color coding, smooth rendering via Bubbletea. No custom sprites needed — the beauty comes from consistent styling and classic gameplay.
 
@@ -22,7 +22,7 @@ The aesthetic is refined terminal: box-drawing characters, proper color coding, 
 ### Directory Structure
 
 ```
-tmvgs/
+termcade/
 ├── cmd/
 │   └── main.go              # Entry point, game menu, Bubbletea app router
 ├── core/
@@ -226,7 +226,7 @@ Game ends when a new piece spawns and immediately collides with existing blocks.
 
 ```
 ╔═══════════════════════════════╗
-║      tmvgs — Terminal Games    ║
+║   termcade — Terminal Games   ║
 ╠═══════════════════════════════╣
 ║                               ║
 ║   ▶ Play Tetris               ║

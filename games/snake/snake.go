@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kacheo/tmvgs/core"
+	"github.com/kacheo/termcade/core"
 )
 
 const (
