@@ -747,7 +747,7 @@ func TestMainMenu_NavigateToBlackjack(t *testing.T) {
 func TestBlackjackOptions_StartGame(t *testing.T) {
 	m := newModel()
 	m.currentMenu = menuBlackjackOptions
-	m.selected = 0
+	m.selected = 1
 	m.updateBlackjackOptions(keyMsg("enter"))
 	if m.currentMenu != menuPlaying {
 		t.Errorf("currentMenu = %v, want menuPlaying", m.currentMenu)
@@ -763,7 +763,7 @@ func TestBlackjackOptions_StartGame(t *testing.T) {
 func TestBlackjackOptions_Back(t *testing.T) {
 	m := newModel()
 	m.currentMenu = menuBlackjackOptions
-	m.selected = 1
+	m.selected = 2
 	m.updateBlackjackOptions(keyMsg("enter"))
 	if m.currentMenu != menuMain {
 		t.Errorf("currentMenu = %v, want menuMain", m.currentMenu)
@@ -1056,8 +1056,17 @@ func TestUpdateBlackjackOptionsNavigation(t *testing.T) {
 	if m.selected != 0 {
 		t.Errorf("after up: selected = %d, want 0", m.selected)
 	}
+	// adjust decks
+	m.Update(keyMsg("left"))
+	if m.blackjackOpts.decks != 5 {
+		t.Errorf("after left: decks = %d, want 5", m.blackjackOpts.decks)
+	}
+	m.Update(keyMsg("right"))
+	if m.blackjackOpts.decks != 6 {
+		t.Errorf("after right: decks = %d, want 6", m.blackjackOpts.decks)
+	}
 	// start game
-	m.selected = 0
+	m.selected = 1
 	m.Update(keyMsg("enter"))
 	if m.currentMenu != menuPlaying {
 		t.Errorf("start game: currentMenu = %d, want menuPlaying", m.currentMenu)

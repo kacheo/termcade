@@ -65,6 +65,9 @@ type model struct {
 		seats      int
 		difficulty int
 	}
+	blackjackOpts struct {
+		decks int
+	}
 }
 
 func (m *model) Init() tea.Cmd {
@@ -281,24 +284,35 @@ func (m *model) updateSudokuOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateBlackjackOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.blackjackOpts.decks == 0 {
+		m.blackjackOpts.decks = 6
+	}
 	switch msg.String() {
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
 		}
 	case "down", "j":
-		if m.selected < 1 {
+		if m.selected < 2 {
 			m.selected++
+		}
+	case "left", "h":
+		if m.selected == 0 && m.blackjackOpts.decks > 1 {
+			m.blackjackOpts.decks--
+		}
+	case "right", "l":
+		if m.selected == 0 && m.blackjackOpts.decks < 8 {
+			m.blackjackOpts.decks++
 		}
 	case "enter", " ":
 		switch m.selected {
-		case 0:
-			m.game = blackjack.NewBlackjack()
+		case 1:
+			m.game = blackjack.NewBlackjack(m.blackjackOpts.decks)
 			m.activeGame = gameKindBlackjack
 			m.currentMenu = menuPlaying
 			m.gameOver = false
 			m.selected = 0
-		case 1:
+		case 2:
 			m.currentMenu = menuMain
 			m.selected = 0
 		}
@@ -364,7 +378,7 @@ func (m *model) restartGame() {
 	case gameKindSudoku:
 		m.game = sudoku.NewSudoku(m.sudokuOpts.difficulty, m.sudokuOpts.highlightIdx)
 	case gameKindBlackjack:
-		m.game = blackjack.NewBlackjack()
+		m.game = blackjack.NewBlackjack(m.blackjackOpts.decks)
 	case gameKindPoker:
 		m.game = poker.NewPoker(m.pokerOpts.seats, poker.Difficulty(m.pokerOpts.difficulty))
 	}
@@ -653,26 +667,45 @@ func (m *model) renderSudokuOptions() string {
 }
 
 func (m *model) renderBlackjackOptions() string {
+	decks := m.blackjackOpts.decks
+	if decks == 0 {
+		decks = 6
+	}
+
 	var sb strings.Builder
 	sb.WriteString("\n")
 	sb.WriteString("  ╔═══════════════════════════════════════╗\n")
-	sb.WriteString("  ║       Blackjack — Ready?              ║\n")
+	sb.WriteString("  ║        Blackjack — Options            ║\n")
 	sb.WriteString("  ╠═══════════════════════════════════════╣\n")
 	sb.WriteString("  ║                                       ║\n")
-	sb.WriteString("  ║   Beat the dealer. You and 3 AI       ║\n")
-	sb.WriteString("  ║   players vs the house. Hit or        ║\n")
-	sb.WriteString("  ║   stand — closest to 21 wins.         ║\n")
+	sb.WriteString("  ║   Beat the dealer. Bet, hit, stand,   ║\n")
+	sb.WriteString("  ║   double, or split — closest to 21    ║\n")
+	sb.WriteString("  ║   wins. Practice counting: toggle     ║\n")
+	sb.WriteString("  ║   the count overlay with 'C' in-game. ║\n")
+	sb.WriteString("  ║                                       ║\n")
+
+	hlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
+
+	decksStr := fmt.Sprintf("  ║   Decks        [ %d ]  ◀ ▶             ║", decks)
+	if m.selected == 0 {
+		decksStr = fmt.Sprintf("  ║  ▶ Decks        [ %d ]  ◀ ▶             ║", decks)
+		decksStr = hlStyle.Render(decksStr)
+	}
+	sb.WriteString(decksStr + "\n")
+
 	sb.WriteString("  ║                                       ║\n")
 	items := []string{"Start Game", "Back"}
 	for i, item := range items {
-		if i == m.selected {
-			item = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render(item)
+		if i+1 == m.selected {
+			item = hlStyle.Render(item)
+			fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
+		} else {
+			fmt.Fprintf(&sb, "  ║    %-31s ║\n", item)
 		}
-		fmt.Fprintf(&sb, "  ║  ▶ %-31s ║\n", item)
 	}
 	sb.WriteString("  ║                                       ║\n")
 	sb.WriteString("  ╚═══════════════════════════════════════╝\n")
-	sb.WriteString("    ↑↓ Navigate   Enter Select\n")
+	sb.WriteString("    ↑↓ Navigate   ◀▶ Adjust   Enter Select\n")
 	return sb.String()
 }
 

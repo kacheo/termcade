@@ -14,37 +14,70 @@ import (
 type phase int
 
 const (
-	phaseDealing phase = iota
+	phaseBetting phase = iota
+	phaseDealing
+	phaseInsurance
 	phaseTurn
 	phaseDealerTurn
 	phaseResults
 )
 
-type playerStatus int
+type handStatus int
 
 const (
-	statusPlaying playerStatus = iota
+	statusPlaying handStatus = iota
 	statusStand
 	statusBust
 	statusBlackjack
 )
 
-type tablePlayer struct {
-	name   string
-	hand   Hand
-	status playerStatus
-	result string // "WIN", "LOSE", "PUSH", or ""
+// playerHand is one hand the player is playing this round. There are two of
+// these only after a split; every other round has exactly one.
+type playerHand struct {
+	hand          Hand
+	status        handStatus
+	result        string // "WIN", "LOSE", "PUSH", or ""
+	bet           int
+	isDoubled     bool
+	fromSplitAces bool // one card only, forced stand — standard split-Aces rule
 }
+
+const (
+	startingBankroll = 1000
+	minBet           = 10
+	betStep          = 10
+
+	// insuranceOptimalTrueCount is the standard Hi-Lo threshold above which
+	// taking even-money insurance is the correct (positive-EV) play.
+	insuranceOptimalTrueCount = 3.0
+)
 
 type Blackjack struct {
 	rng     *rand.Rand
-	deck    cardpkg.Deck
+	shoe    *Shoe
 	dealer  Hand
-	player  tablePlayer
+	hands   []playerHand
+	active  int
 	phase   phase
 	elapsed time.Duration
 	wins    int
 	rounds  int
+
+	bankroll int
+	bet      int
+
+	dealerHoleCounted bool
+
+	insuranceOffered             bool
+	insuranceTaken               bool
+	insuranceBet                 int
+	insuranceResult              string
+	insuranceTrueCountAtDecision float64
+	insuranceCorrectCount        int
+	insuranceTotalCount          int
+
+	showCount bool
+	gameOver  bool
 }
 
 const (
@@ -52,35 +85,75 @@ const (
 	dealerDelay = 700 * time.Millisecond
 )
 
-func NewBlackjack() *Blackjack {
-	b := &Blackjack{rng: rand.New(rand.NewSource(time.Now().UnixNano()))}
-	b.startRound()
+// NewBlackjack creates a new game with a shoe of numDecks decks. A numDecks
+// of 0 or less defaults to 6 (a standard Vegas shoe game).
+func NewBlackjack(numDecks int) *Blackjack {
+	if numDecks <= 0 {
+		numDecks = 6
+	}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := &Blackjack{
+		rng:      rng,
+		shoe:     NewShoe(numDecks, rng),
+		bankroll: startingBankroll,
+		bet:      minBet,
+	}
+	b.enterBetting()
 	return b
 }
 
-func (b *Blackjack) startRound() {
-	b.deck = cardpkg.NewDeck().Shuffled(b.rng)
-	b.dealer = Hand{}
-	b.player = tablePlayer{name: "YOU"}
-	for i := 0; i < 2; i++ {
-		b.player.hand = append(b.player.hand, b.deck.Draw())
-		b.dealer = append(b.dealer, b.deck.Draw())
+func (b *Blackjack) enterBetting() {
+	if b.bet > b.bankroll {
+		b.bet = b.bankroll
 	}
-	if b.player.hand.IsBlackjack() {
-		b.player.status = statusBlackjack
+	if b.bet < minBet {
+		b.bet = minBet
+	}
+	b.phase = phaseBetting
+	b.elapsed = 0
+}
+
+func (b *Blackjack) startRound() {
+	if b.shoe.NeedsReshuffle() {
+		b.shoe.Reshuffle()
+	}
+	b.dealerHoleCounted = false
+	b.insuranceOffered = false
+	b.insuranceTaken = false
+	b.insuranceBet = 0
+	b.insuranceResult = ""
+
+	b.dealer = Hand{}
+	b.hands = []playerHand{{bet: b.bet}}
+	b.active = 0
+
+	for i := 0; i < 2; i++ {
+		pc := b.shoe.Draw()
+		b.hands[0].hand = append(b.hands[0].hand, pc)
+		b.shoe.CountCard(pc)
+		b.dealer = append(b.dealer, b.shoe.Draw())
+	}
+	// The dealer's up-card (first card dealt) is visible immediately; the
+	// hole card (second) is deferred until it's actually revealed.
+	b.shoe.CountCard(b.dealer[0])
+
+	if b.hands[0].hand.IsBlackjack() {
+		b.hands[0].status = statusBlackjack
 	}
 	b.phase = phaseDealing
 	b.elapsed = 0
 	b.rounds++
 }
 
-func (b *Blackjack) Name() string        { return "Blackjack" }
-func (b *Blackjack) Description() string { return "Beat the dealer. Hit or stand." }
-func (b *Blackjack) IsPaused() bool      { return false }
-func (b *Blackjack) IsGameOver() bool    { return false }
-func (b *Blackjack) GetScore() int       { return b.wins }
-func (b *Blackjack) GetLevel() int       { return 0 }
-func (b *Blackjack) GetLines() int       { return b.rounds }
+func (b *Blackjack) Name() string { return "Blackjack" }
+func (b *Blackjack) Description() string {
+	return "Beat the dealer. Bet, hit, stand, double, or split — closest to 21 wins."
+}
+func (b *Blackjack) IsPaused() bool   { return false }
+func (b *Blackjack) IsGameOver() bool { return b.gameOver }
+func (b *Blackjack) GetScore() int    { return b.bankroll }
+func (b *Blackjack) GetLevel() int    { return b.shoe.numDecks }
+func (b *Blackjack) GetLines() int    { return b.rounds }
 
 func (b *Blackjack) Update(delta time.Duration) error {
 	b.elapsed += delta
@@ -100,18 +173,67 @@ func (b *Blackjack) Update(delta time.Duration) error {
 }
 
 func (b *Blackjack) transitionFromDealing() {
-	if b.player.status == statusPlaying {
-		b.phase = phaseTurn
-	} else {
-		b.phase = phaseDealerTurn
-		b.elapsed = 0
+	if b.dealer[0].Rank == cardpkg.Ace {
+		b.insuranceOffered = true
+		b.insuranceTrueCountAtDecision = b.shoe.TrueCount()
+		b.phase = phaseInsurance
+		return
 	}
+	b.afterInsuranceDecision()
+}
+
+// dealerBlackjackUnresolved reports whether the dealer could still be
+// holding an unrevealed blackjack. Ace up-cards are always peeked (see
+// transitionFromDealing/resolveInsuranceReveal), so once insurance has been
+// offered a dealer blackjack would already be known. Ten-value up-cards are
+// deliberately never peeked (no-peek-on-Ten, see docs/blackjack-design.md),
+// so a dealer blackjack behind one stays genuinely unresolved until the
+// dealer's turn actually reveals it. Any other up-card (2-9) can't pair with
+// a hole card to make 21, so a dealer blackjack is structurally impossible.
+func (b *Blackjack) dealerBlackjackUnresolved() bool {
+	return !b.insuranceOffered && b.dealer[0].Rank >= cardpkg.Ten
+}
+
+func (b *Blackjack) afterInsuranceDecision() {
+	if b.hands[0].status != statusBlackjack {
+		b.phase = phaseTurn
+		b.active = 0
+		return
+	}
+	if b.dealerBlackjackUnresolved() {
+		// Genuine uncertainty: the dealer's Ten-value up-card might hide a
+		// blackjack that only the natural dealer-turn reveal can surface, so
+		// play it out as normal.
+		b.enterDealerTurn()
+		return
+	}
+	// The dealer is already known not to have blackjack (Ace peek came back
+	// negative, or the up-card structurally rules it out), so the player's
+	// natural blackjack has already won. Reveal the hole card and settle
+	// immediately rather than dealing the dealer extra cards a real counter
+	// would never see at a table where the outcome is already decided.
+	b.enterDealerTurn()
+	b.evaluateResults()
+	b.phase = phaseResults
+}
+
+// enterDealerTurn moves into the dealer's turn, revealing (and, exactly
+// once, counting) the hole card at the moment it actually becomes visible.
+func (b *Blackjack) enterDealerTurn() {
+	if !b.dealerHoleCounted {
+		b.shoe.CountCard(b.dealer[1])
+		b.dealerHoleCounted = true
+	}
+	b.phase = phaseDealerTurn
+	b.elapsed = 0
 }
 
 func (b *Blackjack) stepDealer() {
 	dv := b.dealer.Value()
 	if dv < 17 || (dv == 17 && b.dealer.IsSoft()) {
-		b.dealer = append(b.dealer, b.deck.Draw())
+		c := b.shoe.Draw()
+		b.shoe.CountCard(c)
+		b.dealer = append(b.dealer, c)
 	} else {
 		b.evaluateResults()
 		b.phase = phaseResults
@@ -122,75 +244,262 @@ func (b *Blackjack) evaluateResults() {
 	dv := b.dealer.Value()
 	dealerBust := b.dealer.IsBust()
 	dealerBJ := b.dealer.IsBlackjack()
-	p := &b.player
-	switch p.status {
-	case statusBust:
-		p.result = "LOSE"
-	case statusBlackjack:
-		if dealerBJ {
-			p.result = "PUSH"
-		} else {
-			p.result = "WIN"
-			b.wins++
+
+	for i := range b.hands {
+		h := &b.hands[i]
+		switch h.status {
+		case statusBust:
+			h.result = "LOSE"
+		case statusBlackjack:
+			if dealerBJ {
+				h.result = "PUSH"
+			} else {
+				h.result = "WIN"
+			}
+		default:
+			pv := h.hand.Value()
+			switch {
+			// A dealer natural blackjack beats any other 21 (a 3+ card 21,
+			// or a post-split 21, both non-blackjack per rule) — it can
+			// never push against one, only lose.
+			case dealerBJ:
+				h.result = "LOSE"
+			case dealerBust || pv > dv:
+				h.result = "WIN"
+			case pv == dv:
+				h.result = "PUSH"
+			default:
+				h.result = "LOSE"
+			}
 		}
-	default:
-		pv := p.hand.Value()
-		if dealerBust || pv > dv {
-			p.result = "WIN"
-			b.wins++
-		} else if pv == dv {
-			p.result = "PUSH"
-		} else {
-			p.result = "LOSE"
-		}
+		b.settleHand(h)
+	}
+
+	if b.insuranceOffered {
+		b.settleInsurance(dealerBJ)
+	}
+
+	if b.bankroll < minBet {
+		b.gameOver = true
 	}
 }
 
+func (b *Blackjack) settleHand(h *playerHand) {
+	switch h.result {
+	case "WIN":
+		b.wins++
+		payout := h.bet
+		if h.status == statusBlackjack {
+			payout = h.bet * 3 / 2
+		}
+		b.bankroll += h.bet + payout
+	case "PUSH":
+		b.bankroll += h.bet
+	}
+}
+
+func (b *Blackjack) settleInsurance(dealerBJ bool) {
+	if !b.insuranceTaken {
+		return
+	}
+	if dealerBJ {
+		b.insuranceResult = "WIN"
+		b.bankroll += b.insuranceBet * 3 // original insurance bet + 2:1 payout
+	} else {
+		b.insuranceResult = "LOSE"
+	}
+}
+
+func (b *Blackjack) recordInsuranceDecision() {
+	optimal := b.insuranceTrueCountAtDecision >= insuranceOptimalTrueCount
+	b.insuranceTotalCount++
+	if b.insuranceTaken == optimal {
+		b.insuranceCorrectCount++
+	}
+}
+
+func (b *Blackjack) resolveInsuranceReveal() {
+	if b.dealer.IsBlackjack() {
+		b.enterDealerTurn()
+		b.evaluateResults()
+		b.phase = phaseResults
+		return
+	}
+	b.afterInsuranceDecision()
+}
+
+func (b *Blackjack) canTakeInsurance() bool {
+	return b.bankroll >= b.hands[0].bet/2
+}
+
+func (b *Blackjack) canDouble(h *playerHand) bool {
+	return len(h.hand) == 2 && !h.isDoubled && !h.fromSplitAces && b.bankroll >= h.bet
+}
+
+func (b *Blackjack) canSplit(h *playerHand) bool {
+	if len(b.hands) != 1 || len(h.hand) != 2 {
+		return false
+	}
+	if cardBaseValue(h.hand[0].Rank) != cardBaseValue(h.hand[1].Rank) {
+		return false
+	}
+	return b.bankroll >= h.bet
+}
+
+func (b *Blackjack) performDouble(h *playerHand) {
+	b.bankroll -= h.bet
+	h.bet *= 2
+	h.isDoubled = true
+	c := b.shoe.Draw()
+	b.shoe.CountCard(c)
+	h.hand = append(h.hand, c)
+	if h.hand.IsBust() {
+		h.status = statusBust
+	} else {
+		h.status = statusStand
+	}
+	b.advanceOrDealer()
+}
+
+func (b *Blackjack) performSplit() {
+	h := b.hands[0]
+	b.bankroll -= h.bet
+	isAces := h.hand[0].Rank == cardpkg.Ace
+
+	hand1 := playerHand{hand: Hand{h.hand[0]}, bet: h.bet}
+	hand2 := playerHand{hand: Hand{h.hand[1]}, bet: h.bet}
+
+	d1 := b.shoe.Draw()
+	b.shoe.CountCard(d1)
+	hand1.hand = append(hand1.hand, d1)
+
+	d2 := b.shoe.Draw()
+	b.shoe.CountCard(d2)
+	hand2.hand = append(hand2.hand, d2)
+
+	if isAces {
+		// Standard rule: split Aces get exactly one card each and cannot be
+		// hit further, regardless of the resulting total.
+		hand1.status = statusStand
+		hand1.fromSplitAces = true
+		hand2.status = statusStand
+		hand2.fromSplitAces = true
+	}
+	// Note: a split hand reaching 21 is a plain 21, not a "natural" blackjack
+	// — standard rule, no 3:2 bonus — so status stays statusPlaying/Stand,
+	// never statusBlackjack, for split hands.
+
+	b.hands = []playerHand{hand1, hand2}
+	b.active = 0
+	if b.hands[0].status != statusPlaying {
+		b.advanceOrDealer()
+	}
+}
+
+// advanceOrDealer moves to the next hand still in play, or to the dealer's
+// turn once every hand is resolved.
+func (b *Blackjack) advanceOrDealer() {
+	for i := b.active + 1; i < len(b.hands); i++ {
+		if b.hands[i].status == statusPlaying {
+			b.active = i
+			return
+		}
+	}
+	b.enterDealerTurn()
+}
+
 func (b *Blackjack) HandleInput(key string) {
+	if key == "c" {
+		b.showCount = !b.showCount
+		return
+	}
 	switch b.phase {
+	case phaseBetting:
+		switch key {
+		case "left", "h":
+			if b.bet-betStep >= minBet {
+				b.bet -= betStep
+			}
+		case "right", "l":
+			if b.bet+betStep <= b.bankroll {
+				b.bet += betStep
+			}
+		case "enter", " ":
+			b.bankroll -= b.bet
+			b.startRound()
+		}
+	case phaseInsurance:
+		switch key {
+		case "y", "i":
+			if !b.canTakeInsurance() {
+				return
+			}
+			b.insuranceTaken = true
+			b.insuranceBet = b.hands[0].bet / 2
+			b.bankroll -= b.insuranceBet
+		case "n", "s":
+			b.insuranceTaken = false
+		default:
+			return
+		}
+		b.recordInsuranceDecision()
+		b.resolveInsuranceReveal()
 	case phaseTurn:
-		if b.player.status != statusPlaying {
+		h := &b.hands[b.active]
+		if h.status != statusPlaying {
 			return
 		}
 		switch key {
 		case "h", "left":
-			b.player.hand = append(b.player.hand, b.deck.Draw())
-			if b.player.hand.IsBust() {
-				b.player.status = statusBust
+			c := b.shoe.Draw()
+			b.shoe.CountCard(c)
+			h.hand = append(h.hand, c)
+			if h.hand.IsBust() {
+				h.status = statusBust
+				b.advanceOrDealer()
 			}
-			b.phase = phaseDealerTurn
-			b.elapsed = 0
 		case "s", "right", "down":
-			b.player.status = statusStand
-			b.phase = phaseDealerTurn
-			b.elapsed = 0
+			h.status = statusStand
+			b.advanceOrDealer()
+		case "d":
+			if b.canDouble(h) {
+				b.performDouble(h)
+			}
+		case "x":
+			if b.canSplit(h) {
+				b.performSplit()
+			}
 		}
 	case phaseResults:
 		if key == "enter" || key == " " {
-			b.startRound()
+			b.enterBetting()
 		}
 	}
 }
 
 var (
-	bjBorderSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	bjTitleSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
-	bjRedCardSty   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555"))
-	bjWhiteCardSty = lipgloss.NewStyle().Foreground(lipgloss.Color("#EEEEEE"))
-	bjHiddenSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
-	bjLabelSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
-	bjActiveSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF88")).Bold(true)
-	bjTextSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
-	bjWinSty       = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true)
-	bjLoseSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
-	bjPushSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
-	bjBustSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444")).Bold(true)
-	bjBJSty        = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
-	bjActionSty    = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Background(lipgloss.Color("#333333"))
-	bjHotSty       = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#00FF88")).Bold(true)
+	bjBorderSty        = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	bjTitleSty         = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
+	bjRedCardSty       = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555"))
+	bjWhiteCardSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#EEEEEE"))
+	bjHiddenSty        = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+	bjLabelSty         = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	bjActiveSty        = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF88")).Bold(true)
+	bjTextSty          = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
+	bjWinSty           = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true)
+	bjLoseSty          = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+	bjPushSty          = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00"))
+	bjBustSty          = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444")).Bold(true)
+	bjBJSty            = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
+	bjActionSty        = lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC")).Background(lipgloss.Color("#333333"))
+	bjHotSty           = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#00FF88")).Bold(true)
+	bjBankrollSty      = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF")).Bold(true)
+	bjCountPositiveSty = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true)
+	bjCountNegativeSty = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444")).Bold(true)
+	bjInsuranceSty     = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true)
 )
 
-const bjInnerWidth = 46
+const bjInnerWidth = 54
 
 func bjRenderCard(c cardpkg.Card) string {
 	return cardpkg.RenderCard(c, bjRedCardSty, bjWhiteCardSty)
@@ -249,17 +558,44 @@ func (b *Blackjack) Render() string {
 	sb.WriteString(row(bjCenter(bjTitleSty.Render("BLACKJACK"), bjInnerWidth)))
 	sb.WriteString(brd("╠"+strings.Repeat("═", bjInnerWidth)+"╣") + "\n")
 
-	// Dealer
-	dealerCards, dealerVal := bjRenderHandMasked(b.dealer, revealed)
-	sb.WriteString(row(" " + bjTextSty.Render("DEALER") + "  " + dealerCards + dealerVal))
+	if b.phase == phaseBetting {
+		sb.WriteString(row(" " + bjBankrollSty.Render(fmt.Sprintf("Bankroll: $%d", b.bankroll))))
+		sb.WriteString(blank())
+		sb.WriteString(row(fmt.Sprintf("  Bet: $%-4d   ◀ ▶ Adjust   ENTER Deal", b.bet)))
+	} else {
+		// Dealer
+		dealerCards, dealerVal := bjRenderHandMasked(b.dealer, revealed)
+		sb.WriteString(row(" " + bjTextSty.Render("DEALER") + "  " + dealerCards + dealerVal))
 
-	sb.WriteString(brd("╠"+strings.Repeat("═", bjInnerWidth)+"╣") + "\n")
-	sb.WriteString(row(b.renderPlayerRow(b.phase == phaseTurn)))
+		if b.phase == phaseInsurance {
+			sb.WriteString(row("  " + bjInsuranceSty.Render(fmt.Sprintf("Dealer shows Ace — Insurance? ($%d)", b.hands[0].bet/2))))
+		}
+
+		sb.WriteString(brd("╠"+strings.Repeat("═", bjInnerWidth)+"╣") + "\n")
+		for i := range b.hands {
+			sb.WriteString(row(b.renderPlayerRow(i, b.phase == phaseTurn && i == b.active)))
+		}
+	}
 	sb.WriteString(blank())
 
 	switch b.phase {
+	case phaseBetting:
+		sb.WriteString(blank())
+	case phaseInsurance:
+		actions := "  " + bjActionSty.Render(" N-Decline ")
+		if b.canTakeInsurance() {
+			actions = "  " + bjHotSty.Render(" Y-Insurance ") + "   " + actions
+		}
+		sb.WriteString(row(actions))
 	case phaseTurn:
+		h := &b.hands[b.active]
 		actions := "  " + bjHotSty.Render(" H-Hit ") + "   " + bjActionSty.Render(" S-Stand ")
+		if b.canDouble(h) {
+			actions += "   " + bjActionSty.Render(" D-Double ")
+		}
+		if b.canSplit(h) {
+			actions += "   " + bjActionSty.Render(" X-Split ")
+		}
 		sb.WriteString(row(actions))
 	case phaseResults:
 		sb.WriteString(row("  " + bjPushSty.Render("Press ENTER / SPACE for next round")))
@@ -269,24 +605,50 @@ func (b *Blackjack) Render() string {
 		sb.WriteString(blank())
 	}
 
+	if b.showCount {
+		sb.WriteString(blank())
+		sb.WriteString(row("  " + b.renderCountOverlay()))
+	}
+
 	sb.WriteString(blank())
-	sb.WriteString(row("  " + bjLabelSty.Render(fmt.Sprintf("Wins: %d   Rounds: %d", b.wins, b.rounds))))
+	sb.WriteString(row("  " + bjLabelSty.Render(fmt.Sprintf("Bankroll: $%d   Wins: %d   Rounds: %d", b.bankroll, b.wins, b.rounds))))
 	sb.WriteString(brd("╚" + strings.Repeat("═", bjInnerWidth) + "╝"))
 	return sb.String()
 }
 
-func (b *Blackjack) renderPlayerRow(active bool) string {
-	p := &b.player
+func (b *Blackjack) renderCountOverlay() string {
+	tc := b.shoe.TrueCount()
+	tcSty := bjCountPositiveSty
+	if tc < 0 {
+		tcSty = bjCountNegativeSty
+	}
+	s := fmt.Sprintf("Count: %+d   True: %s   Decks left: %.1f",
+		b.shoe.RunningCount(), tcSty.Render(fmt.Sprintf("%+.1f", tc)), b.shoe.DecksRemaining())
+	if b.shoe.NeedsReshuffle() {
+		s += "   " + bjLabelSty.Render("[reshuffle pending]")
+	}
+	if b.insuranceTotalCount > 0 {
+		s += fmt.Sprintf("   Insurance: %d/%d correct", b.insuranceCorrectCount, b.insuranceTotalCount)
+	}
+	return s
+}
+
+func (b *Blackjack) renderPlayerRow(idx int, active bool) string {
+	h := &b.hands[idx]
+	name := "YOU"
+	if len(b.hands) > 1 {
+		name = fmt.Sprintf("YOU-%d", idx+1)
+	}
 	nameSty := bjTextSty
 	if active {
 		nameSty = bjActiveSty
 	}
-	name := nameSty.Render(fmt.Sprintf("%-5s", p.name))
+	nameStr := nameSty.Render(fmt.Sprintf("%-6s", name))
 
-	val := bjLabelSty.Render(fmt.Sprintf(" (%d)", p.hand.Value()))
+	val := bjLabelSty.Render(fmt.Sprintf(" (%d)", h.hand.Value()))
 
 	statusStr := ""
-	switch p.status {
+	switch h.status {
 	case statusBust:
 		statusStr = "  " + bjBustSty.Render("BUST")
 	case statusStand:
@@ -294,7 +656,10 @@ func (b *Blackjack) renderPlayerRow(active bool) string {
 	case statusBlackjack:
 		statusStr = "  " + bjBJSty.Render("BLACKJACK!")
 	}
-	switch p.result {
+	if h.isDoubled {
+		statusStr += "  " + bjLabelSty.Render("(DOUBLED)")
+	}
+	switch h.result {
 	case "WIN":
 		statusStr += "  " + bjWinSty.Render("WIN")
 	case "LOSE":
@@ -302,11 +667,12 @@ func (b *Blackjack) renderPlayerRow(active bool) string {
 	case "PUSH":
 		statusStr += "  " + bjPushSty.Render("PUSH")
 	}
+	betStr := "  " + bjLabelSty.Render(fmt.Sprintf("$%d", h.bet))
 
-	const prefixW = 8
-	suffixW := lipgloss.Width(val) + lipgloss.Width(statusStr)
+	const prefixW = 9
+	suffixW := lipgloss.Width(val) + lipgloss.Width(statusStr) + lipgloss.Width(betStr)
 	cardBudget := bjInnerWidth - prefixW - suffixW
-	cards := bjRenderHandBudget(p.hand, cardBudget)
+	cards := bjRenderHandBudget(h.hand, cardBudget)
 
-	return " " + name + "  " + cards + val + statusStr
+	return " " + nameStr + "  " + cards + val + betStr + statusStr
 }
