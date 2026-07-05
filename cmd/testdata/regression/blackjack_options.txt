@@ -1,14 +1,17 @@
 
   ╔═══════════════════════════════════════╗
-  ║       Blackjack — Ready?              ║
+  ║        Blackjack — Options            ║
   ╠═══════════════════════════════════════╣
   ║                                       ║
-  ║   Beat the dealer. You and 3 AI       ║
-  ║   players vs the house. Hit or        ║
-  ║   stand — closest to 21 wins.         ║
+  ║   Beat the dealer. Bet, hit, stand,   ║
+  ║   double, or split — closest to 21    ║
+  ║   wins. Practice counting: toggle     ║
+  ║   the count overlay with 'C' in-game. ║
   ║                                       ║
-  ║  ▶ Start Game                      ║
-  ║  ▶ Back                            ║
+  ║  ▶ Decks        [ 6 ]  ◀ ▶             ║
+  ║                                       ║
+  ║    Start Game                      ║
+  ║    Back                            ║
   ║                                       ║
   ╚═══════════════════════════════════════╝
-    ↑↓ Navigate   Enter Select
+    ↑↓ Navigate   ◀▶ Adjust   Enter Select
