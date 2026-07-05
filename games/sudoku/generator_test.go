@@ -39,3 +39,21 @@ func countGivens(board *Board) int {
 	}
 	return count
 }
+
+func TestDifficultyString(t *testing.T) {
+	cases := []struct {
+		d    Difficulty
+		want string
+	}{
+		{DifficultyEasy, "Easy"},
+		{DifficultyMedium, "Medium"},
+		{DifficultyHard, "Hard"},
+		{Difficulty(99), "Unknown"},
+	}
+	for _, tc := range cases {
+		got := tc.d.String()
+		if got != tc.want {
+			t.Errorf("Difficulty(%d).String() = %q, want %q", tc.d, got, tc.want)
+		}
+	}
+}

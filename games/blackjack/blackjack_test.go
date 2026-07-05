@@ -212,3 +212,10 @@ func TestRender_PlayerTurnShowsActions(t *testing.T) {
 		t.Error("player turn should show stand action")
 	}
 }
+
+func TestBlackjackDescription(t *testing.T) {
+	b := NewBlackjack()
+	if b.Description() != "Beat the dealer. Hit or stand." {
+		t.Errorf("Description() = %q", b.Description())
+	}
+}

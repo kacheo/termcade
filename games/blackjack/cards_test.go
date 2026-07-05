@@ -55,3 +55,16 @@ func TestHandIsSoft(t *testing.T) {
 		t.Error("A+K+5=16 hard: ace forced to 1, not soft")
 	}
 }
+
+func TestHandBaseValue(t *testing.T) {
+	// Low card first: Seven → 7
+	h := Hand{cards.Card{Rank: cards.Seven, Suit: cards.Spades}, cards.Card{Rank: cards.Ace, Suit: cards.Hearts}}
+	if got := h.BaseValue(); got != 7 {
+		t.Errorf("Seven first: BaseValue() = %d, want 7", got)
+	}
+	// High card first: King → 10
+	h = Hand{cards.Card{Rank: cards.King, Suit: cards.Spades}, cards.Card{Rank: cards.Two, Suit: cards.Hearts}}
+	if got := h.BaseValue(); got != 10 {
+		t.Errorf("King first: BaseValue() = %d, want 10", got)
+	}
+}

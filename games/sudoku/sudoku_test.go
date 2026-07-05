@@ -156,3 +156,63 @@ found:
 		t.Error("pencil marks should be visible in render output")
 	}
 }
+
+func TestSudokuInterfaceMethods(t *testing.T) {
+	game := NewSudoku(DifficultyMedium, 0)
+
+	if game.Description() != "Classic number puzzle" {
+		t.Errorf("Description() = %q", game.Description())
+	}
+	if game.IsPaused() {
+		t.Error("IsPaused() should be false initially")
+	}
+	if game.IsGameOver() {
+		t.Error("IsGameOver() should be false initially")
+	}
+	if game.GetLevel() != int(DifficultyMedium) {
+		t.Errorf("GetLevel() = %d, want %d", game.GetLevel(), int(DifficultyMedium))
+	}
+	if game.GetLines() != 0 {
+		t.Errorf("GetLines() = %d, want 0", game.GetLines())
+	}
+	if game.QuitRequested() {
+		t.Error("QuitRequested() should be false initially")
+	}
+	game.ClearQuitRequest()
+	if game.QuitRequested() {
+		t.Error("QuitRequested() should still be false after ClearQuitRequest()")
+	}
+	if game.Won() {
+		t.Error("Won() should be false initially")
+	}
+	if game.GetElapsed() < 0 {
+		t.Errorf("GetElapsed() = %v, want >= 0", game.GetElapsed())
+	}
+}
+
+func TestCheckWinSolvesBoard(t *testing.T) {
+	game := NewSudoku(DifficultyEasy, 0)
+
+	boardCopy := *game.board
+	ok, err := Solve(&boardCopy)
+	if !ok || err != nil {
+		t.Fatalf("Solve() failed: %v", err)
+	}
+
+	for r := 0; r < 9; r++ {
+		for c := 0; c < 9; c++ {
+			if !game.board.cells[r][c].given {
+				game.board.cells[r][c].value = boardCopy.cells[r][c].value
+			}
+		}
+	}
+
+	game.checkWin()
+
+	if !game.won {
+		t.Error("expected won=true after filling board with valid solution")
+	}
+	if !game.isGameOver {
+		t.Error("expected isGameOver=true after winning")
+	}
+}

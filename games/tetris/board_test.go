@@ -282,3 +282,22 @@ func TestBoardClearLines_NonContiguous(t *testing.T) {
 		t.Errorf("ClearLines non-contiguous: got %d, want 2", n)
 	}
 }
+
+func TestFullRowsEmptyBoard(t *testing.T) {
+	b := NewBoard()
+	rows := b.FullRows()
+	if len(rows) != 0 {
+		t.Errorf("FullRows() on empty board = %v, want []", rows)
+	}
+}
+
+func TestFullRowsOneFullRow(t *testing.T) {
+	b := NewBoard()
+	for x := 0; x < BoardWidth; x++ {
+		b.SetCell(x, BoardHeight-1, 'I')
+	}
+	rows := b.FullRows()
+	if len(rows) != 1 || rows[0] != BoardHeight-1 {
+		t.Errorf("FullRows() = %v, want [%d]", rows, BoardHeight-1)
+	}
+}

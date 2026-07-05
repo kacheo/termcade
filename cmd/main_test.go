@@ -786,3 +786,306 @@ func TestRenderBlackjackOptions_ContainsTitle(t *testing.T) {
 		t.Error("options render should contain Blackjack")
 	}
 }
+
+func TestUpdateSudokuOptionsNavigation(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSudokuOptions
+
+	m.Update(keyMsg("down"))
+	if m.selected != 1 {
+		t.Errorf("after down: selected = %d, want 1", m.selected)
+	}
+	m.Update(keyMsg("up"))
+	if m.selected != 0 {
+		t.Errorf("after up: selected = %d, want 0", m.selected)
+	}
+}
+
+func TestUpdateSudokuOptionsDifficulty(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSudokuOptions
+
+	m.Update(keyMsg("right"))
+	if m.sudokuOpts.difficulty != 1 {
+		t.Errorf("after right: difficulty = %d, want 1", m.sudokuOpts.difficulty)
+	}
+	m.Update(keyMsg("left"))
+	if m.sudokuOpts.difficulty != 0 {
+		t.Errorf("after left: difficulty = %d, want 0", m.sudokuOpts.difficulty)
+	}
+	m.Update(keyMsg("enter"))
+	if m.sudokuOpts.difficulty != 1 {
+		t.Errorf("after enter on difficulty: difficulty = %d, want 1", m.sudokuOpts.difficulty)
+	}
+}
+
+func TestUpdateSudokuOptionsHighlight(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSudokuOptions
+	m.selected = 1
+
+	m.Update(keyMsg("right"))
+	if m.sudokuOpts.highlightIdx != 1 {
+		t.Errorf("after right on highlight: highlightIdx = %d, want 1", m.sudokuOpts.highlightIdx)
+	}
+	m.Update(keyMsg("left"))
+	if m.sudokuOpts.highlightIdx != 0 {
+		t.Errorf("after left on highlight: highlightIdx = %d, want 0", m.sudokuOpts.highlightIdx)
+	}
+}
+
+func TestUpdateSudokuOptionsStartGame(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSudokuOptions
+	m.selected = 2
+
+	m.Update(keyMsg("enter"))
+
+	if m.currentMenu != menuPlaying {
+		t.Errorf("after start: currentMenu = %d, want menuPlaying", m.currentMenu)
+	}
+	if m.activeGame != gameKindSudoku {
+		t.Errorf("after start: activeGame = %d, want gameKindSudoku", m.activeGame)
+	}
+	if m.game == nil {
+		t.Error("after start: game should not be nil")
+	}
+}
+
+func TestUpdateSudokuOptionsBack(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSudokuOptions
+	m.selected = 3
+
+	m.Update(keyMsg("enter"))
+	if m.currentMenu != menuMain {
+		t.Errorf("after back enter: currentMenu = %d, want menuMain", m.currentMenu)
+	}
+
+	m.currentMenu = menuSudokuOptions
+	m.Update(keyMsg("q"))
+	if m.currentMenu != menuMain {
+		t.Errorf("after q: currentMenu = %d, want menuMain", m.currentMenu)
+	}
+}
+
+func TestRenderSudokuOptions(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuSudokuOptions
+	view := m.View()
+	if !strings.Contains(view, "Sudoku") {
+		t.Error("renderSudokuOptions view should contain 'Sudoku'")
+	}
+}
+
+func TestUpdatePokerOptionsNavigation(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPokerOptions
+
+	m.Update(keyMsg("down"))
+	if m.selected != 1 {
+		t.Errorf("after down: selected = %d, want 1", m.selected)
+	}
+	if m.pokerOpts.seats != 4 {
+		t.Errorf("seats should initialize to 4, got %d", m.pokerOpts.seats)
+	}
+	m.Update(keyMsg("up"))
+	if m.selected != 0 {
+		t.Errorf("after up: selected = %d, want 0", m.selected)
+	}
+}
+
+func TestUpdatePokerOptionsSeats(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPokerOptions
+	m.pokerOpts.seats = 4
+
+	m.Update(keyMsg("right"))
+	if m.pokerOpts.seats != 5 {
+		t.Errorf("after right: seats = %d, want 5", m.pokerOpts.seats)
+	}
+	m.Update(keyMsg("left"))
+	if m.pokerOpts.seats != 4 {
+		t.Errorf("after left: seats = %d, want 4", m.pokerOpts.seats)
+	}
+}
+
+func TestUpdatePokerOptionsDifficulty(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPokerOptions
+	m.pokerOpts.seats = 4
+	m.selected = 1
+
+	m.Update(keyMsg("right"))
+	if m.pokerOpts.difficulty != 1 {
+		t.Errorf("after right on difficulty: difficulty = %d, want 1", m.pokerOpts.difficulty)
+	}
+	m.Update(keyMsg("left"))
+	if m.pokerOpts.difficulty != 0 {
+		t.Errorf("after left on difficulty: difficulty = %d, want 0", m.pokerOpts.difficulty)
+	}
+}
+
+func TestUpdatePokerOptionsStartGame(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPokerOptions
+	m.pokerOpts.seats = 4
+	m.selected = 2
+
+	m.Update(keyMsg("enter"))
+
+	if m.currentMenu != menuPlaying {
+		t.Errorf("after start: currentMenu = %d, want menuPlaying", m.currentMenu)
+	}
+	if m.activeGame != gameKindPoker {
+		t.Errorf("after start: activeGame = %d, want gameKindPoker", m.activeGame)
+	}
+	if m.game == nil {
+		t.Error("after start: game should not be nil")
+	}
+}
+
+func TestUpdatePokerOptionsBack(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPokerOptions
+	m.pokerOpts.seats = 4
+	m.selected = 3
+
+	m.Update(keyMsg("enter"))
+	if m.currentMenu != menuMain {
+		t.Errorf("after back enter: currentMenu = %d, want menuMain", m.currentMenu)
+	}
+
+	m.currentMenu = menuPokerOptions
+	m.Update(keyMsg("q"))
+	if m.currentMenu != menuMain {
+		t.Errorf("after q: currentMenu = %d, want menuMain", m.currentMenu)
+	}
+}
+
+func TestRenderPokerOptions(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPokerOptions
+	view := m.View()
+	if !strings.Contains(view, "Poker") {
+		t.Error("renderPokerOptions view should contain 'Poker'")
+	}
+}
+
+func TestUpdateMainMenuNavigateToGames(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuMain
+
+	m.selected = 2
+	m.Update(keyMsg("enter"))
+	if m.currentMenu != menuSudokuOptions {
+		t.Errorf("Sudoku: currentMenu = %d, want menuSudokuOptions", m.currentMenu)
+	}
+
+	m.currentMenu = menuMain
+	m.selected = 3
+	m.Update(keyMsg("enter"))
+	if m.currentMenu != menuBlackjackOptions {
+		t.Errorf("Blackjack: currentMenu = %d, want menuBlackjackOptions", m.currentMenu)
+	}
+
+	m.currentMenu = menuMain
+	m.selected = 4
+	m.Update(keyMsg("enter"))
+	if m.currentMenu != menuPokerOptions {
+		t.Errorf("Poker: currentMenu = %d, want menuPokerOptions", m.currentMenu)
+	}
+}
+
+func TestRenderGameOverMenu(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuGameOver
+	m.gameOver = true
+	m.game = &MockGame{gameOverVal: true, scoreVal: 42, levelVal: 3, linesVal: 7}
+	view := m.View()
+	if len(view) == 0 {
+		t.Error("game over menu should render non-empty view")
+	}
+}
+
+func TestUpdateGameEscKey(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPlaying
+	m.game = &MockGame{}
+
+	m.Update(keyMsg("esc"))
+	if len(m.game.(*MockGame).inputsSeen) == 0 {
+		t.Error("esc should be forwarded to game.HandleInput")
+	}
+}
+
+func TestUpdateGamePauseKey(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPlaying
+	m.game = &MockGame{}
+
+	m.Update(keyMsg("p"))
+	if m.currentMenu != menuPause {
+		t.Errorf("p: currentMenu = %d, want menuPause", m.currentMenu)
+	}
+}
+
+func TestUpdateGameGameOverTransition(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuPlaying
+	m.game = &MockGame{gameOverVal: true}
+
+	m.Update(keyMsg("x"))
+	if m.currentMenu != menuGameOver {
+		t.Errorf("game over transition: currentMenu = %d, want menuGameOver", m.currentMenu)
+	}
+	if !m.gameOver {
+		t.Error("m.gameOver should be true")
+	}
+}
+
+func TestUpdateBlackjackOptionsNavigation(t *testing.T) {
+	m := newModel()
+	m.currentMenu = menuBlackjackOptions
+
+	m.Update(keyMsg("down"))
+	if m.selected != 1 {
+		t.Errorf("after down: selected = %d, want 1", m.selected)
+	}
+	m.Update(keyMsg("up"))
+	if m.selected != 0 {
+		t.Errorf("after up: selected = %d, want 0", m.selected)
+	}
+	// start game
+	m.selected = 0
+	m.Update(keyMsg("enter"))
+	if m.currentMenu != menuPlaying {
+		t.Errorf("start game: currentMenu = %d, want menuPlaying", m.currentMenu)
+	}
+}
+
+func TestRestartGameRemainingTypes(t *testing.T) {
+	m := newModel()
+
+	m.activeGame = gameKindSudoku
+	m.sudokuOpts.difficulty = 0
+	m.sudokuOpts.highlightIdx = 0
+	m.restartGame()
+	if m.game == nil {
+		t.Error("restartGame(Sudoku): game should not be nil")
+	}
+
+	m.activeGame = gameKindBlackjack
+	m.restartGame()
+	if m.game == nil {
+		t.Error("restartGame(Blackjack): game should not be nil")
+	}
+
+	m.activeGame = gameKindPoker
+	m.pokerOpts.seats = 4
+	m.pokerOpts.difficulty = 0
+	m.restartGame()
+	if m.game == nil {
+		t.Error("restartGame(Poker): game should not be nil")
+	}
+}

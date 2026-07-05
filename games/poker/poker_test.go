@@ -215,3 +215,177 @@ func TestShowdown_SidePotAllIn(t *testing.T) {
 		t.Errorf("pot = %d, want 0 after showdown", p.pot)
 	}
 }
+
+func TestPokerInterfaceMethods(t *testing.T) {
+	p := NewPoker(4, Easy)
+
+	if p.Name() != "Poker" {
+		t.Errorf("Name() = %q, want \"Poker\"", p.Name())
+	}
+	if p.Description() != "Texas Hold'em — bet, raise, or fold." {
+		t.Errorf("Description() = %q", p.Description())
+	}
+	if p.IsPaused() {
+		t.Error("IsPaused() should be false initially")
+	}
+	if p.IsGameOver() {
+		t.Error("IsGameOver() should be false initially")
+	}
+	if p.GetScore() < 0 {
+		t.Errorf("GetScore() = %d, want >= 0", p.GetScore())
+	}
+	if p.GetLevel() != int(Easy) {
+		t.Errorf("GetLevel() = %d, want %d", p.GetLevel(), int(Easy))
+	}
+	if p.GetLines() != 0 {
+		t.Errorf("GetLines() = %d, want 0", p.GetLines())
+	}
+}
+
+func TestPokerGetScoreEmptyPlayers(t *testing.T) {
+	p := &Poker{}
+	if p.GetScore() != 0 {
+		t.Errorf("GetScore() with no players = %d, want 0", p.GetScore())
+	}
+}
+
+func TestHandRankNameAllRanks(t *testing.T) {
+	cases := []struct {
+		rank HandRank
+		want string
+	}{
+		{HighCard, "High Card"},
+		{OnePair, "One Pair"},
+		{TwoPair, "Two Pair"},
+		{ThreeOfAKind, "Three of a Kind"},
+		{Straight, "Straight"},
+		{Flush, "Flush"},
+		{FullHouse, "Full House"},
+		{FourOfAKind, "Four of a Kind"},
+		{StraightFlush, "Straight Flush"},
+		{RoyalFlush, "Royal Flush"},
+	}
+	for _, tc := range cases {
+		got := handRankName(tc.rank)
+		if got != tc.want {
+			t.Errorf("handRankName(%v) = %q, want %q", tc.rank, got, tc.want)
+		}
+	}
+	if handRankName(HandRank(99)) != "Unknown" {
+		t.Error("handRankName(unknown) should return 'Unknown'")
+	}
+}
+
+func TestPokerHandleInputGating(t *testing.T) {
+	p := NewPoker(4, Easy)
+
+	// Phase out of range: no-op
+	p.phase = phaseGameOver
+	p.HandleInput("f")
+
+	// Not human's turn: no-op
+	p.phase = phasePreflop
+	p.action = 1
+	p.HandleInput("f")
+}
+
+func TestPokerHandleInputFold(t *testing.T) {
+	p := NewPoker(4, Easy)
+	p.phase = phasePreflop
+	p.action = 0
+
+	p.HandleInput("f")
+	if !p.players[0].folded {
+		t.Error("player 0 should be folded after 'f'")
+	}
+}
+
+func TestPokerHandleInputCheck(t *testing.T) {
+	p := NewPoker(4, Easy)
+	p.phase = phasePreflop
+	p.action = 0
+	p.toCall = 0
+
+	before := p.players[0].chips
+	p.HandleInput("c")
+	// check costs nothing
+	if p.players[0].chips != before {
+		t.Errorf("check: chips changed from %d to %d", before, p.players[0].chips)
+	}
+}
+
+func TestPokerHandleInputCall(t *testing.T) {
+	p := NewPoker(4, Easy)
+	p.phase = phasePreflop
+	p.action = 0
+	p.toCall = 10
+	p.players[0].chips = 1000
+
+	p.HandleInput("c")
+	// call is applied; chips should decrease (or fold if chips were low)
+}
+
+func TestPokerHandleInputAllIn(t *testing.T) {
+	p := NewPoker(4, Easy)
+	p.phase = phasePreflop
+	p.action = 0
+
+	if p.players[0].chips > 0 {
+		p.HandleInput("a")
+		if !p.players[0].allIn {
+			t.Error("player 0 should be all-in after 'a'")
+		}
+	}
+}
+
+func TestPokerHandleInputRaiseModeEntry(t *testing.T) {
+	p := NewPoker(4, Easy)
+	p.phase = phasePreflop
+	p.action = 0
+	p.toCall = 10
+	p.minRaise = 20
+	p.players[0].chips = 500
+
+	p.HandleInput("r")
+	if !p.raiseMode {
+		t.Error("should enter raise mode after 'r' when chips are sufficient")
+	}
+}
+
+func TestPokerHandleInputRaiseModeNavigation(t *testing.T) {
+	p := NewPoker(4, Easy)
+	p.phase = phasePreflop
+	p.action = 0
+	p.raiseMode = true
+	p.minRaise = 20
+	p.raiseAmount = 40
+	p.toCall = 10
+	p.players[0].chips = 500
+
+	// up increases raise amount
+	p.HandleInput("up")
+	if p.raiseAmount != 60 {
+		t.Errorf("up: raiseAmount = %d, want 60", p.raiseAmount)
+	}
+
+	// down decreases raise amount
+	p.HandleInput("down")
+	if p.raiseAmount != 40 {
+		t.Errorf("down: raiseAmount = %d, want 40", p.raiseAmount)
+	}
+
+	// esc exits raise mode
+	p.raiseMode = true
+	p.HandleInput("esc")
+	if p.raiseMode {
+		t.Error("esc: should exit raise mode")
+	}
+
+	// enter commits raise
+	p.raiseMode = true
+	p.raiseAmount = 40
+	p.HandleInput("enter")
+	if p.raiseMode {
+		t.Error("enter: should exit raise mode")
+	}
+}
