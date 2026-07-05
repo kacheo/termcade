@@ -8,6 +8,7 @@ Classic arcade games in your terminal, built with Go and Bubble Tea.
 [![Go Report Card](https://goreportcard.com/badge/github.com/kacheo/termcade)](https://goreportcard.com/report/github.com/kacheo/termcade)
 [![CI](https://github.com/kacheo/termcade/actions/workflows/ci.yml/badge.svg)](https://github.com/kacheo/termcade/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/kacheo/termcade)](https://github.com/kacheo/termcade/releases)
+[![Homebrew](https://img.shields.io/badge/homebrew-tap-blue?logo=homebrew)](https://github.com/kacheo/homebrew-termcade)
 
 ---
 
