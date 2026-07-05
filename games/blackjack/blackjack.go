@@ -182,13 +182,39 @@ func (b *Blackjack) transitionFromDealing() {
 	b.afterInsuranceDecision()
 }
 
+// dealerBlackjackUnresolved reports whether the dealer could still be
+// holding an unrevealed blackjack. Ace up-cards are always peeked (see
+// transitionFromDealing/resolveInsuranceReveal), so once insurance has been
+// offered a dealer blackjack would already be known. Ten-value up-cards are
+// deliberately never peeked (no-peek-on-Ten, see docs/blackjack-design.md),
+// so a dealer blackjack behind one stays genuinely unresolved until the
+// dealer's turn actually reveals it. Any other up-card (2-9) can't pair with
+// a hole card to make 21, so a dealer blackjack is structurally impossible.
+func (b *Blackjack) dealerBlackjackUnresolved() bool {
+	return !b.insuranceOffered && b.dealer[0].Rank >= cardpkg.Ten
+}
+
 func (b *Blackjack) afterInsuranceDecision() {
-	if b.hands[0].status == statusBlackjack {
+	if b.hands[0].status != statusBlackjack {
+		b.phase = phaseTurn
+		b.active = 0
+		return
+	}
+	if b.dealerBlackjackUnresolved() {
+		// Genuine uncertainty: the dealer's Ten-value up-card might hide a
+		// blackjack that only the natural dealer-turn reveal can surface, so
+		// play it out as normal.
 		b.enterDealerTurn()
 		return
 	}
-	b.phase = phaseTurn
-	b.active = 0
+	// The dealer is already known not to have blackjack (Ace peek came back
+	// negative, or the up-card structurally rules it out), so the player's
+	// natural blackjack has already won. Reveal the hole card and settle
+	// immediately rather than dealing the dealer extra cards a real counter
+	// would never see at a table where the outcome is already decided.
+	b.enterDealerTurn()
+	b.evaluateResults()
+	b.phase = phaseResults
 }
 
 // enterDealerTurn moves into the dealer's turn, revealing (and, exactly
@@ -233,6 +259,11 @@ func (b *Blackjack) evaluateResults() {
 		default:
 			pv := h.hand.Value()
 			switch {
+			// A dealer natural blackjack beats any other 21 (a 3+ card 21,
+			// or a post-split 21, both non-blackjack per rule) — it can
+			// never push against one, only lose.
+			case dealerBJ:
+				h.result = "LOSE"
 			case dealerBust || pv > dv:
 				h.result = "WIN"
 			case pv == dv:
@@ -295,6 +326,10 @@ func (b *Blackjack) resolveInsuranceReveal() {
 		return
 	}
 	b.afterInsuranceDecision()
+}
+
+func (b *Blackjack) canTakeInsurance() bool {
+	return b.bankroll >= b.hands[0].bet/2
 }
 
 func (b *Blackjack) canDouble(h *playerHand) bool {
@@ -396,6 +431,9 @@ func (b *Blackjack) HandleInput(key string) {
 	case phaseInsurance:
 		switch key {
 		case "y", "i":
+			if !b.canTakeInsurance() {
+				return
+			}
 			b.insuranceTaken = true
 			b.insuranceBet = b.hands[0].bet / 2
 			b.bankroll -= b.insuranceBet
@@ -544,7 +582,10 @@ func (b *Blackjack) Render() string {
 	case phaseBetting:
 		sb.WriteString(blank())
 	case phaseInsurance:
-		actions := "  " + bjHotSty.Render(" Y-Insurance ") + "   " + bjActionSty.Render(" N-Decline ")
+		actions := "  " + bjActionSty.Render(" N-Decline ")
+		if b.canTakeInsurance() {
+			actions = "  " + bjHotSty.Render(" Y-Insurance ") + "   " + actions
+		}
 		sb.WriteString(row(actions))
 	case phaseTurn:
 		h := &b.hands[b.active]

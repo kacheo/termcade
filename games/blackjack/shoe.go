@@ -88,9 +88,9 @@ func (s *Shoe) CountCard(c cardpkg.Card) {
 }
 
 // checkPenetration flags the shoe for reshuffle once enough of it has been
-// dealt (tracked via counted cards, which mirrors cards actually exposed to
-// play). It never reshuffles immediately — startRound() checks the flag
-// between hands so a reshuffle never happens mid-round.
+// physically dealt (CardsRemaining, not the Hi-Lo count). It never
+// reshuffles immediately — startRound() checks the flag between hands so a
+// reshuffle never happens mid-round.
 func (s *Shoe) checkPenetration() {
 	if float64(s.CardsRemaining()) <= float64(s.totalCards)*(1-shoePenetration) {
 		s.reshufflePending = true

@@ -43,9 +43,10 @@ This is a card-counting trainer, not just a hand-by-hand game: cards are dealt f
 
 ## Insurance
 
-- Offered whenever the dealer's up-card is an Ace, for up to half your bet.
+- Offered whenever the dealer's up-card is an Ace, for up to half your bet — you can only take it if your bankroll covers that amount.
 - Standard counting strategy: insurance is a profitable bet only when the true count is +3 or higher. The count overlay tracks how often your insurance decisions matched that rule.
 - If the dealer has blackjack, insurance pays 2:1 and the round settles immediately.
+- The dealer only peeks for blackjack on an Ace up-card. A Ten-value up-card is never peeked, so a hidden dealer blackjack behind one isn't revealed until the dealer's turn — and a natural blackjack always beats any other 21, even a multi-card one, so it's a LOSE, not a PUSH, if that reveal turns out to be a dealer blackjack.
 
 ## Double down & split
 
